@@ -28,12 +28,12 @@ const appEnv = createAppEnv({
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
 })
 
-const description = "Play anywhere with your portable piano."
+const description = "Play a two-octave piano instantly with your computer keyboard or touch."
 
 export const metadata: Metadata = {
   metadataBase: new URL(appEnv.NEXT_PUBLIC_APP_URL),
   applicationName: "webpiano",
-  title: "webpiano — Your portable piano",
+  title: "webpiano — Play now",
   description,
   alternates: { canonical: "/" },
   manifest: "/manifest.webmanifest",
@@ -46,13 +46,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "webpiano",
-    title: "webpiano — Your portable piano",
+    title: "webpiano — Play now",
     description,
     url: "/",
   },
   twitter: {
     card: "summary_large_image",
-    title: "webpiano — Your portable piano",
+    title: "webpiano — Play now",
     description,
   },
 }

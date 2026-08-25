@@ -2,7 +2,13 @@
 
 A premium, PC-keyboard-first Web/PWA piano for `webpiano.xyz`.
 
-The initial release contains the brand surface, generated piano photography, installable PWA shell, offline fallback, and Cloudflare Workers deployment path. Audio playback, sound packs, smartphone pedal input, payments, and marketplace behavior are intentionally deferred.
+The top page opens directly into a playable two-octave instrument. It supports PC keyboard input, pointer/touch input, Space-key sustain, a lightweight Web Audio piano synth, the installable PWA shell, offline fallback, and Cloudflare Workers deployment. Recorded sound packs, smartphone pedal input, payments, and marketplace behavior are intentionally deferred.
+
+Keyboard mapping:
+
+- `Z S X D C V G B H N J M` — C3 through B3
+- `Q 2 W 3 E R 5 T 6 Y 7 U` — C4 through B4
+- `Space` — sustain pedal
 
 ## Stack
 

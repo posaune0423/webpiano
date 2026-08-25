@@ -23,7 +23,7 @@ bun run cf:build
 
 ## Acceptance surfaces
 
-- Landing page copy, semantic elements, photography, and absence of fake CTAs.
+- Immediate piano rendering, 24-key physical mapping, keyboard/pointer input, sustain, and stuck-note cleanup.
 - Offline fallback and PWA manifest.
 - Asset format, dimensions, budgets, and icon purposes.
 - Oxlint native and JavaScript plugin contract.

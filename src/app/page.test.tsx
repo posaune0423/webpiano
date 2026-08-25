@@ -4,15 +4,14 @@ import { render, screen } from "@testing-library/react"
 
 import Home from "./page"
 
-describe("landing page", () => {
-  test("introduces webpiano without advertising unfinished features", () => {
+describe("piano page", () => {
+  test("opens directly into the playable instrument", () => {
     render(<Home />)
 
     expect(screen.getByRole("heading", { level: 1, name: "webpiano" })).toBeTruthy()
-    expect(screen.getByText("Play anywhere with your portable piano.")).toBeTruthy()
-    expect(screen.getByText("Coming soon")).toBeTruthy()
-    expect(screen.getByRole("img", { name: "Glossy grand piano keys" })).toBeTruthy()
-    expect(screen.queryByRole("link")).toBeNull()
-    expect(screen.queryByRole("button")).toBeNull()
+    expect(screen.getByRole("group", { name: "Playable piano" })).toBeTruthy()
+    expect(screen.getAllByRole("button", { name: /Play / })).toHaveLength(24)
+    expect(screen.queryByText("Coming soon")).toBeNull()
+    expect(screen.queryByRole("img", { name: "Glossy grand piano keys" })).toBeNull()
   })
 })

@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "webpiano",
     short_name: "webpiano",
-    description: "Play anywhere with your portable piano.",
+    description: "Play a two-octave piano instantly with your computer keyboard or touch.",
     start_url: "/",
     display: "standalone",
     background_color: "#11100f",

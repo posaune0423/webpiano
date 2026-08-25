@@ -38,12 +38,14 @@ The base radius is 4px. Panels may use 8px (`rounded-lg`); controls and labels s
 - Badges are rectangular instrument labels, never promotional pills.
 - Borders are finer and more important than shadows. Shadows communicate physical depth only on primary panels.
 - No fake call-to-action is shown for a feature that is not available.
+- `/` is the instrument, not an LP: the two-octave keyboard owns the available viewport and scrolls horizontally inside its own panel on narrow screens.
+- Piano keys are specialized native buttons with visible note/PC-key labels, a physical two-black/three-black pattern, pressed state, pointer capture, and keyboard/assistive activation.
 
 ## Motion
 
 - Motion is functional: key press, pedal state, focus, loading, or route change.
 - Default transitions stay within 120–220ms with restrained easing.
-- Do not animate the landing page merely to make it look active.
+- Do not animate the instrument merely to make it look active; key motion must reflect input.
 - `prefers-reduced-motion` collapses non-essential animation and smooth scrolling.
 
 ## Do / Don’t
@@ -82,6 +84,8 @@ Adopted project paths:
 - Icon master: `public/brand/piano-keys-icon.png`
 - Social derivative: `src/app/opengraph-image.jpg`
 - Application icons: `src/app/icon.png`, `src/app/apple-icon.png`, and `public/icons/*.png`
+
+The photography remains brand and social collateral. It is intentionally not placed in front of the playable keyboard on the top page.
 
 ImageGen source paths at generation time:
 

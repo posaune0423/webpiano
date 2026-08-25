@@ -2,7 +2,7 @@
 
 ## Project context
 
-webpiano is a single Next.js App Router application for a premium, PC-keyboard-first Web/PWA piano. The initial release is a branded coming-soon surface; instrument playback, sound packs, smartphone pedal input, payments, and marketplace behavior belong in later feature work.
+webpiano is a single Next.js App Router application for a premium, PC-keyboard-first Web/PWA piano. The top page opens directly into a playable two-octave instrument. Sample sound packs, smartphone pedal input, payments, and marketplace behavior belong in later feature work.
 
 - Design system and generated-image record: `docs/DESIGN.md`
 - Lint migration and supported rules: `docs/LINTING.md`
@@ -13,7 +13,7 @@ webpiano is a single Next.js App Router application for a premium, PC-keyboard-f
 - Use Bun 1.4.0 and Node.js 24 or newer.
 - Develop behavior with TDD: Red, Green, then Refactor.
 - Keep this a single Next.js application. Do not add Turborepo, workspaces, a database, or speculative service boundaries.
-- Keep state separate from audio/input logic when instrument features are introduced.
+- Keep state, input mapping, and audio synthesis in separate modules.
 - Use shadcn Base UI components and semantic tokens. Do not add raw colors in components.
 - Use `gap-*`, not `space-*`, for sibling spacing. Compose classes with `cn()`.
 - Do not advertise controls or features that do not exist.
