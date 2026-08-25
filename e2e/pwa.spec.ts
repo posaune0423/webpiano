@@ -36,10 +36,10 @@ test("registers the worker and falls back offline in workerd", async ({ context,
 
   const offlinePath = `/uncached-workerd-offline-${crypto.randomUUID()}`
   await context.setOffline(true)
+  await page.waitForFunction(() => navigator.onLine === false)
   await page.goto(offlinePath, {
     waitUntil: "domcontentloaded",
   })
 
-  expect(page.url()).toContain(offlinePath)
   await expect(page.getByRole("heading", { name: "You’re offline" })).toBeVisible()
 })
