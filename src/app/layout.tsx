@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next"
 import { Cormorant_Garamond, Inter, Space_Mono } from "next/font/google"
+import type { ReactNode } from "react"
 
 import { createAppEnv } from "@/env"
 import { cn } from "@/lib/utils"
@@ -61,7 +62,7 @@ export const viewport: Viewport = {
   themeColor: "#11100f",
 }
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
