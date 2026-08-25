@@ -1,0 +1,6 @@
+# Project lessons
+
+- 2026-08-26 — shadcn v4 expresses the requested `base-nova` setup as `--preset nova --base base`; the resulting `components.json` style remains `base-nova`.
+- 2026-08-26 — Serwist injects a webpack config even when disabled. Next.js 16 therefore needs an explicit `next dev --turbopack`; production PWA generation remains `next build --webpack`.
+- 2026-08-26 — The Cloudflare target is the `daiko` account and only the `webpiano.xyz` apex custom domain. `www` is intentionally absent.
+- 2026-08-26 — Cloudflare validates compatibility dates in UTC. While local time was already August 26, `2026-08-26` was rejected as future-dated, so the initial deploy uses `2026-08-25`.
