@@ -5,7 +5,7 @@ import { ViewTransition } from "react"
 import type { ReactNode } from "react"
 
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { createAppEnv } from "@/env"
+import { env } from "@/env"
 import { GOOGLE_ANALYTICS_ID } from "@/lib/analytics"
 import { createHomeMetadata } from "@/lib/seo"
 import { cn } from "@/lib/utils"
@@ -30,11 +30,7 @@ const monoFont = Space_Mono({
   weight: ["400", "700"],
 })
 
-const appEnv = createAppEnv({
-  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-})
-
-export const metadata: Metadata = createHomeMetadata(appEnv.NEXT_PUBLIC_APP_URL)
+export const metadata: Metadata = createHomeMetadata(env.NEXT_PUBLIC_APP_URL)
 
 export const viewport: Viewport = {
   colorScheme: "dark",

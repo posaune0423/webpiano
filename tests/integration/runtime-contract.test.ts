@@ -11,6 +11,13 @@ function read(path: string) {
 }
 
 describe("runtime contract", () => {
+  test("exports one validated environment object", () => {
+    const envSource = read("src/env.ts")
+
+    expect(envSource).toContain("export const env = createEnv({")
+    expect(envSource).not.toContain("createAppEnv")
+  })
+
   test("uses the official Next.js Google Analytics integration", () => {
     const packageJson = JSON.parse(read("package.json")) as {
       dependencies: Record<string, string>
