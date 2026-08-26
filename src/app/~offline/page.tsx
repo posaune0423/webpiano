@@ -1,4 +1,13 @@
+import type { Metadata } from "next"
+
 import { Separator } from "@/components/ui/separator"
+
+export const metadata: Metadata = {
+  alternates: { canonical: null },
+  description: "Reconnect to continue with webpiano.",
+  robots: { follow: true, index: false },
+  title: "Offline — webpiano",
+}
 
 export default function OfflinePage() {
   return (
