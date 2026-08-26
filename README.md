@@ -48,9 +48,9 @@ See [DESIGN.md](docs/DESIGN.md), [LINTING.md](docs/LINTING.md), and [TESTING.md]
 
 `wrangler.jsonc` targets the `webpiano` Worker and only the `webpiano.xyz` apex custom domain.
 
-Production deploys through Cloudflare Builds after a pull request is merged into `main`. The connected build uses `bun run cf:build`, then `bun run cf:deploy`; the deploy command keeps `main` on the production Worker and routes non-production branches to isolated preview Workers. Use a manual deploy only for explicit recovery or release verification.
+Production deploys through Cloudflare Builds after a pull request is merged into `main`. The connected build uses `bun run cf:build`, then `bun run cf:deploy`. Use a manual deploy only for explicit recovery or release verification.
 
-Non-production branch builds are detected through Cloudflare's `WORKERS_CI_BRANCH` variable and delegated to `bun run cf:deploy:preview`. Because native Cloudflare preview URLs are unavailable for Workers that implement Durable Objects, this deploys a branch-scoped Worker at `https://webpiano-pr-<branch>.yamadaasuma.workers.dev`; the `Cloudflare PR preview` workflow waits for it and posts the stable URL to the pull request.
+Cloudflare's non-production branch deploy command is `bun run cf:deploy:preview`. Because native Cloudflare preview URLs are unavailable for Workers that implement Durable Objects, this deploys a branch-scoped Worker at `https://webpiano-pr-<branch>.yamadaasuma.workers.dev`; the `Cloudflare PR preview` workflow waits for it and posts the stable URL to the pull request.
 
 ```sh
 bunx wrangler whoami

@@ -4,12 +4,6 @@ function previewUrl(branch: string) {
   return Bun.spawnSync(["bun", "scripts/deploy-cloudflare-preview.ts", "--print-url", branch])
 }
 
-function deploymentCommand(branch: string) {
-  return Bun.spawnSync(["bun", "scripts/deploy-cloudflare.ts", "--print-command"], {
-    env: { ...process.env, WORKERS_CI_BRANCH: branch },
-  })
-}
-
 describe("Cloudflare branch preview", () => {
   test("derives a stable workers.dev URL from the branch name", () => {
     const result = previewUrl("Feature/Dual_Range")
@@ -38,14 +32,5 @@ describe("Cloudflare branch preview", () => {
 
     expect(result.exitCode).toBe(0)
     expect(result.stdout.toString().trim().startsWith(`${process.cwd()}/`)).toBeTrue()
-  })
-
-  test("keeps main on the production deploy and routes other branches to previews", () => {
-    expect(deploymentCommand("main").stdout.toString().trim()).toBe(
-      "bunx opennextjs-cloudflare deploy",
-    )
-    expect(deploymentCommand("feature/preview").stdout.toString().trim()).toBe(
-      "bun scripts/deploy-cloudflare-preview.ts",
-    )
   })
 })

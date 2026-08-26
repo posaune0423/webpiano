@@ -43,7 +43,7 @@ describe("runtime contract", () => {
       dev: "dotenvx run -f .env.development -- next dev --turbopack",
       build: "dotenvx run -f .env.production -- next build --webpack",
       "cf:build": "bun run cf:typegen && opennextjs-cloudflare build",
-      "cf:deploy": "bun scripts/deploy-cloudflare.ts",
+      "cf:deploy": "opennextjs-cloudflare deploy",
       preview: "bun run cf:build && opennextjs-cloudflare preview",
       deploy: "bun run cf:build && bun run cf:deploy",
       check:
