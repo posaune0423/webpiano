@@ -18,5 +18,9 @@ describe("piano page", () => {
     expect(screen.getAllByRole("button", { name: /Play / })).toHaveLength(24)
     expect(screen.queryByText("Coming soon")).toBeNull()
     expect(screen.queryByRole("img", { name: "Glossy grand piano keys" })).toBeNull()
+    expect(screen.getByRole("link", { name: "Terms" }).getAttribute("href")).toBe("/terms")
+    expect(screen.getByRole("link", { name: "Privacy Policy" }).getAttribute("href")).toBe(
+      "/privacy",
+    )
   })
 })

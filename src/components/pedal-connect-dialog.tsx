@@ -1,6 +1,7 @@
 "use client"
 
 import { useMutation } from "@tanstack/react-query"
+import { Smartphone } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { useEffect, useRef, useState } from "react"
 
@@ -17,6 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Spinner } from "@/components/ui/spinner"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { PedalPeer } from "@/lib/pedal-peer"
 import type { PedalPeerOptions, PedalPeerPort } from "@/lib/pedal-peer"
 import type { CreateSessionOutput } from "@/server/pedal/contracts"
@@ -180,14 +182,29 @@ export function PedalConnectDialog(_props: PedalConnectDialogProps) {
     }
   }
 
-  const triggerLabel = status === "connected" ? "Pedal connected" : "Use phone as pedal"
+  const triggerLabel = status === "connected" ? "Phone pedal connected" : "Use phone as pedal"
   const displayedPairingMinutes = pairingMinutes ?? 1
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button variant={status === "connected" ? "secondary" : "outline"} />}>
-        {triggerLabel}
-      </DialogTrigger>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <DialogTrigger
+              render={
+                <Button
+                  aria-label={triggerLabel}
+                  size="icon"
+                  variant={status === "connected" ? "secondary" : "outline"}
+                />
+              }
+            />
+          }
+        >
+          <Smartphone aria-hidden="true" />
+        </TooltipTrigger>
+        <TooltipContent>{triggerLabel}</TooltipContent>
+      </Tooltip>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
