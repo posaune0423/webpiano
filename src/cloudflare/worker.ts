@@ -36,7 +36,9 @@ function getSignalSessionId(pathname: string) {
 
 export { PedalSession }
 
-const openNextHandler: OpenNextWorker = openNextWorker
+// This module is generated after clean-check linting, so contain its temporary error type here.
+// oxlint-disable-next-line typescript/no-unnecessary-type-assertion
+const openNextHandler = openNextWorker as unknown as OpenNextWorker
 
 export default {
   async fetch(request: Request, env: PedalWorkerEnv, context: PedalExecutionContext) {

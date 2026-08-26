@@ -48,6 +48,8 @@ See [DESIGN.md](docs/DESIGN.md), [LINTING.md](docs/LINTING.md), and [TESTING.md]
 
 `wrangler.jsonc` targets the `webpiano` Worker and only the `webpiano.xyz` apex custom domain.
 
+Production deploys through Cloudflare Builds after a pull request is merged into `main`. The connected build uses `bun run cf:build`, then `bun run cf:deploy`; both generate the current Cloudflare binding types before the OpenNext build. Use a manual deploy only for explicit recovery or release verification.
+
 ```sh
 bunx wrangler whoami
 bun run deploy
