@@ -90,6 +90,28 @@
   }
 }
 
+.portrait-orientation-guide {
+  display: none;
+}
+
+@media (orientation: portrait) and (max-width: 640px) {
+  .instrument-shell {
+    display: none;
+  }
+
+  .portrait-orientation-guide {
+    position: relative;
+    display: grid;
+    place-items: center;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  [data-instrument-mode="dual-range"] footer {
+    display: none;
+  }
+}
+
 ::view-transition {
   pointer-events: none;
 }

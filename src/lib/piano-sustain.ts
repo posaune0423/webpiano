@@ -1,4 +1,4 @@
-export type SustainSource = "keyboard" | "remote-pedal"
+export type SustainSource = "keyboard" | "manual-lock" | "remote-pedal"
 
 export class SustainSources {
   private readonly sources = new Set<SustainSource>()

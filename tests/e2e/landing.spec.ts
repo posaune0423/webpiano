@@ -62,6 +62,16 @@ test("opens directly into the responsive playable piano without page overflow", 
   await page.goto("/")
 
   const main = page.getByRole("main")
+  const orientationGuide = page.getByRole("region", { name: "Landscape orientation required" })
+
+  if (testInfo.project.name === "mobile-portrait-chromium") {
+    await expect(orientationGuide).toBeVisible()
+    await expect(page.getByText("Turn your device sideways")).toBeVisible()
+    await expect(main).toBeHidden()
+    return
+  }
+
+  await expect(orientationGuide).toBeHidden()
   const piano = main.getByRole("group", { name: "Playable piano" })
 
   await expect(main.getByRole("heading", { level: 1, name: "webpiano Online piano" })).toBeVisible()
@@ -74,8 +84,9 @@ test("opens directly into the responsive playable piano without page overflow", 
     await expect(taskDescription).toBeVisible()
   }
   await expect(piano).toBeVisible()
-  await expect(main.getByRole("button", { name: /Play / })).toHaveCount(24)
-  await expect(main.getByRole("button", { name: "Use phone as pedal" })).toBeVisible()
+  await expect(main.getByRole("button", { name: /Play / })).toHaveCount(32)
+  await expect(main.getByRole("button", { name: "Pedal" })).toBeVisible()
+  await expect(main.getByRole("status", { name: "Standard range" })).toHaveText("C3–G5")
   await expect(main.getByRole("status", { name: /Sustain (on|off)/ })).toBeVisible()
   await expect(main.getByRole("status", { name: "Play a note to start audio" })).toBeVisible()
   await expect(main.getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms")
@@ -86,6 +97,21 @@ test("opens directly into the responsive playable piano without page overflow", 
   await expect(main.getByText("Fixed touch · mf")).toHaveCount(0)
   await expect(main.getByText("Space holds the pedal")).toHaveCount(0)
   await expect(main.getByText("Coming soon")).toHaveCount(0)
+
+  const mergedKeycap = main.getByRole("button", { name: "Play C4 with Q · ," }).locator("kbd")
+  await expect
+    .poll(async () =>
+      mergedKeycap.evaluate(
+        (element) =>
+          element.scrollWidth <= element.clientWidth &&
+          element.scrollHeight <= element.clientHeight,
+      ),
+    )
+    .toBe(true)
+
+  await main.getByRole("button", { name: "Standard semitone down" }).click()
+  await expect(main.getByRole("status", { name: "Standard range" })).toHaveText("B2–F♯5")
+  await main.getByRole("button", { name: "Standard semitone up" }).click()
 
   const c3 = main.getByRole("button", { name: "Play C3 with Z" })
   const cSharp3 = main.getByRole("button", { name: "Play C♯3 with S" })
@@ -121,19 +147,94 @@ test("opens directly into the responsive playable piano without page overflow", 
   expect(hasHorizontalOverflow).toBe(false)
 })
 
-test("explains icon-only header controls on hover and focus", async ({ page }) => {
+test("opens Dual Range without changing the standard first view", async ({ page }, testInfo) => {
+  test.skip(
+    testInfo.project.name === "mobile-portrait-chromium",
+    "Portrait shows only the landscape orientation guide",
+  )
+
   await page.goto("/")
 
-  const pedal = page.getByRole("button", { name: "Use phone as pedal" })
+  const main = page.getByRole("main")
+  await expect(main.getByRole("group", { name: "Playable piano" })).toBeVisible()
+  await expect(main.getByRole("figure", { name: "Full piano range from A0 to C8" })).toHaveCount(0)
+
+  await main.getByRole("button", { name: "Open Dual Range" }).click()
+
+  const navigator = main.getByRole("figure", { name: "Full piano range from A0 to C8" })
+  await expect(navigator).toBeVisible()
+  const lowerPiano = main.getByRole("group", { name: "Lower playable piano" })
+  const upperPiano = main.getByRole("group", { name: "Upper playable piano" })
+  await expect(lowerPiano).toBeVisible()
+  await expect(upperPiano).toBeVisible()
+  await expect(main.getByRole("button", { name: /Play / })).toHaveCount(37)
+
+  const minimumZoneHeight = testInfo.project.name === "desktop-chromium" ? 300 : 120
+  await expect
+    .poll(async () => (await lowerPiano.boundingBox())?.height ?? 0)
+    .toBeGreaterThan(minimumZoneHeight)
+  await expect
+    .poll(async () => (await upperPiano.boundingBox())?.height ?? 0)
+    .toBeGreaterThan(minimumZoneHeight)
+
+  const navigatorBox = await navigator.boundingBox()
+  expect(navigatorBox).not.toBeNull()
+  expect((navigatorBox?.width ?? 0) / (navigatorBox?.height ?? 1)).toBeGreaterThan(7.8)
+  expect((navigatorBox?.width ?? 0) / (navigatorBox?.height ?? 1)).toBeLessThan(8.6)
+
+  await main.getByRole("button", { name: "Lower semitone down" }).click()
+  await expect(main.getByRole("status", { name: "Lower range" })).toHaveText("B2–D♯4")
+
+  const lowerC = main.getByRole("button", { name: "Play B2 with Z" })
+  await page.keyboard.down("z")
+  await expect(lowerC).toHaveAttribute("aria-pressed", "true")
+  await expect(navigator.locator('[data-midi="47"]')).toHaveAttribute("data-active", "true")
+  await page.keyboard.up("z")
+
+  const lowerRange = main.getByRole("slider", { name: "Move Lower range" })
+  const lowerRangeBox = await lowerRange.boundingBox()
+  const navigatorBoxForDrag = await navigator.boundingBox()
+  expect(lowerRangeBox).not.toBeNull()
+  expect(navigatorBoxForDrag).not.toBeNull()
+  const startMidi = Number(await lowerRange.getAttribute("aria-valuenow"))
+  await page.mouse.move(
+    (lowerRangeBox?.x ?? 0) + (lowerRangeBox?.width ?? 0) / 2,
+    (lowerRangeBox?.y ?? 0) + (lowerRangeBox?.height ?? 0) / 2,
+  )
+  await page.mouse.down()
+  await page.mouse.move(
+    (lowerRangeBox?.x ?? 0) +
+      (lowerRangeBox?.width ?? 0) / 2 -
+      (navigatorBoxForDrag?.width ?? 0) * 0.06,
+    (lowerRangeBox?.y ?? 0) + (lowerRangeBox?.height ?? 0) / 2,
+  )
+  await expect(lowerRange).toHaveAttribute("data-dragging", "true")
+  await page.mouse.up()
+  await expect
+    .poll(async () => Number(await lowerRange.getAttribute("aria-valuenow")))
+    .toBeLessThan(startMidi)
+
+  await main.getByRole("button", { name: "Close Dual Range" }).click()
+  await expect(main.getByRole("group", { name: "Playable piano" })).toBeVisible()
+  await expect(navigator).toHaveCount(0)
+})
+
+test("explains icon-only header controls on hover and focus", async ({ page }, testInfo) => {
+  test.skip(
+    testInfo.project.name === "mobile-portrait-chromium",
+    "Portrait shows only the landscape orientation guide",
+  )
+  await page.goto("/")
+
+  const pedal = page.getByRole("button", { name: "Pedal" })
   const sustain = page.getByRole("status", {
     name: "Sustain off — hold Space or use phone pedal",
   })
   const audio = page.getByRole("status", { name: "Play a note to start audio" })
+  const dualRange = page.getByRole("button", { name: "Open Dual Range" })
 
   await pedal.hover()
-  await expect(
-    page.locator('[data-slot="tooltip-content"]', { hasText: "Use phone as pedal" }),
-  ).toBeVisible()
+  await expect(page.locator('[data-slot="tooltip-content"]', { hasText: "Pedal" })).toBeVisible()
 
   await sustain.focus()
   await expect(
@@ -146,9 +247,50 @@ test("explains icon-only header controls on hover and focus", async ({ page }) =
   await expect(
     page.locator('[data-slot="tooltip-content"]', { hasText: "Play a note to start audio" }),
   ).toBeVisible()
+
+  await dualRange.hover()
+  await expect(
+    page.locator('[data-slot="tooltip-content"]', {
+      hasText: "Play two independent keyboard ranges",
+    }),
+  ).toBeVisible()
 })
 
-test("opens the legal pages from the footer", async ({ page }) => {
+test("opens the pedal menu without shifting the instrument and locks sustain", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name === "mobile-portrait-chromium",
+    "Portrait shows only the landscape orientation guide",
+  )
+  await page.goto("/")
+
+  const main = page.getByRole("main")
+  const before = await main.boundingBox()
+  await page.getByRole("button", { name: "Pedal" }).click()
+
+  const sustainLock = page.getByRole("menuitemcheckbox", { name: /Sustain lock/ })
+  await expect(sustainLock).toBeVisible()
+  await expect(page.getByRole("menuitem", { name: /Use phone as pedal/ })).toBeVisible()
+  const after = await main.boundingBox()
+  expect(after).toEqual(before)
+
+  await sustainLock.click()
+  await expect(page.getByRole("status", { name: "Sustain on" })).toBeVisible()
+  await page.keyboard.down("Space")
+  await page.keyboard.up("Space")
+  await expect(page.getByRole("status", { name: "Sustain on" })).toBeVisible()
+
+  await page.getByRole("button", { name: "Pedal" }).click()
+  await page.getByRole("menuitem", { name: /Use phone as pedal/ }).click()
+  await expect(page.getByRole("dialog", { name: "Connect your phone" })).toBeVisible()
+})
+
+test("opens the legal pages from the footer", async ({ page }, testInfo) => {
+  test.skip(
+    testInfo.project.name === "mobile-portrait-chromium",
+    "Portrait shows only the landscape orientation guide",
+  )
   await page.goto("/")
 
   await page.getByRole("link", { name: "Terms" }).click()
@@ -160,7 +302,13 @@ test("opens the legal pages from the footer", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Privacy Policy" })).toBeVisible()
 })
 
-test("crossfades route content with the native View Transitions API", async ({ page }) => {
+test("crossfades route content with the native View Transitions API", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name === "mobile-portrait-chromium",
+    "Portrait shows only the landscape orientation guide",
+  )
   await page.goto("/")
   await installViewTransitionProbe(page)
 
@@ -187,7 +335,11 @@ test("crossfades route content with the native View Transitions API", async ({ p
   await expect(page.getByRole("heading", { level: 1, name: "Privacy Policy" })).toBeVisible()
 })
 
-test("removes route animation for reduced motion", async ({ page }) => {
+test("removes route animation for reduced motion", async ({ page }, testInfo) => {
+  test.skip(
+    testInfo.project.name === "mobile-portrait-chromium",
+    "Portrait shows only the landscape orientation guide",
+  )
   await page.emulateMedia({ reducedMotion: "reduce" })
   await page.goto("/")
   await installViewTransitionProbe(page)

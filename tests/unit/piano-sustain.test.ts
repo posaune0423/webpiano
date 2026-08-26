@@ -46,4 +46,22 @@ describe("SustainSources", () => {
     expect(sources.active).toBeFalse()
     expect(onChange).toHaveBeenNthCalledWith(2, false)
   })
+
+  test("keeps a manual lock active after the keyboard pedal releases", () => {
+    const onChange = mock(() => {})
+    const sources = new SustainSources(onChange)
+
+    sources.set("manual-lock", true)
+    sources.set("keyboard", true)
+    sources.set("keyboard", false)
+
+    expect(sources.has("manual-lock")).toBeTrue()
+    expect(sources.active).toBeTrue()
+    expect(onChange).toHaveBeenCalledTimes(1)
+
+    sources.set("manual-lock", false)
+
+    expect(sources.active).toBeFalse()
+    expect(onChange).toHaveBeenNthCalledWith(2, false)
+  })
 })

@@ -8,6 +8,9 @@
 - Browser layout and responsive behavior use Playwright against a production build or OpenNext preview.
 - Do not use fixed sleeps in browser tests.
 - A test that merely reads component source text is not evidence of rendered component behavior.
+- UI changes require current-UI-based wireframes in `docs/wireframes/` before production component changes.
+- Async and conditional UI tests compare loading and resolved container geometry. A spinner without a
+  same-size reserved slot is not an acceptable loading state.
 
 ## Commands
 
@@ -31,8 +34,10 @@ bun run cf:build
 
 ## Acceptance surfaces
 
-- Immediate piano rendering, 24-key physical mapping, keyboard/pointer input, sustain, and stuck-note cleanup.
-- Responsive touch piano on phones, with 844×390 landscape as the primary mobile surface and portrait horizontal scrolling as fallback.
+- Immediate standard-piano rendering, 37 physical bindings across 32 notes, semitone range movement, keyboard/pointer input, sustain, and stuck-note cleanup.
+- Opt-in Dual Range mode with an 88-key navigator, two independently draggable semitone ranges, session-only settings, and safe drop-time layout changes.
+- Pedal-menu discovery, manual sustain lock, and fixed-geometry QR loading/resolved states.
+- Responsive touch piano on phones, with 844×390 landscape as the playable mobile surface and a rotation guide at 390×844 portrait.
 - Typed tRPC session/ICE/end mutations, capability validation, server-gated STUN connectivity, and optional TURN credentials.
 - Durable Object host/guest admission, authenticated-only relay, waiting/ready signaling, expiry, rate limits, and WebSocket message validation.
 - WebRTC offer/answer/ICE exchange, ordered pedal messages, source-owned sustain, and 750ms deadman release.

@@ -1,31 +1,43 @@
 "use client"
 
-import { Keyboard, Volume1, Volume2, VolumeX } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { Keyboard, SlidersHorizontal, Volume1, Volume2, VolumeX } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
   KeyboardEvent as ReactKeyboardEvent,
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
 } from "react"
 
-import { PedalConnectDialog } from "@/components/pedal-connect-dialog"
+import { PedalMenu } from "@/components/pedal-menu"
+import {
+  DualRangeView,
+  OrientationGuide,
+  StandardPianoView,
+} from "@/components/piano-keyboard-view"
 import { SiteFooter } from "@/components/site-footer"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { PIANO_KEYS, getPianoKeyByCode } from "@/lib/piano"
-import type { PianoKey } from "@/lib/piano"
+import {
+  DEFAULT_LOWER_START_MIDI,
+  DEFAULT_UPPER_START_MIDI,
+  STANDARD_RANGE_NOTE_COUNT,
+  createPianoLayout,
+  createStandardPianoLayout,
+  formatPianoRange,
+  getPianoKeyByCode,
+} from "@/lib/piano"
+import type { PianoKey, PianoZone } from "@/lib/piano"
 import { getPianoAudioEngine } from "@/lib/piano-audio"
 import { SustainSources } from "@/lib/piano-sustain"
+import type { SustainSource } from "@/lib/piano-sustain"
 import { cn } from "@/lib/utils"
 
 const VELOCITY = 0.68
-const WHITE_KEYS = PIANO_KEYS.filter((key) => !key.isBlack)
-const BLACK_KEYS = PIANO_KEYS.filter((key) => key.isBlack)
-const WHITE_KEY_WIDTH = 100 / WHITE_KEYS.length
-const BLACK_KEY_WIDTH = WHITE_KEY_WIDTH * 0.62
 
 type AudioStatus = "idle" | "on" | "unavailable"
+type InstrumentMode = "dual-range" | "standard"
 
 interface InstrumentStatusProps {
   children: React.ReactNode
@@ -64,7 +76,12 @@ function isEditableTarget(target: EventTarget | null): boolean {
 export function PianoInstrument({ structuredData }: { structuredData?: string }) {
   const [activeNotes, setActiveNotes] = useState<Set<number>>(() => new Set())
   const [audioStatus, setAudioStatus] = useState<AudioStatus>("idle")
+  const [instrumentMode, setInstrumentMode] = useState<InstrumentMode>("standard")
+  const [lowerStartMidi, setLowerStartMidi] = useState(DEFAULT_LOWER_START_MIDI)
+  const [standardStartMidi, setStandardStartMidi] = useState(DEFAULT_LOWER_START_MIDI)
   const [sustain, setSustainState] = useState(false)
+  const [sustainLocked, setSustainLocked] = useState(false)
+  const [upperStartMidi, setUpperStartMidi] = useState(DEFAULT_UPPER_START_MIDI)
   const activationTimers = useRef(new Map<number, number>())
   const engineStarted = useRef(false)
   const noteSources = useRef(new Map<number, Set<string>>())
@@ -77,6 +94,21 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
     engineStarted.current = true
     getPianoAudioEngine().setSustain(enabled)
   })
+
+  const dualRangeLayout = useMemo(
+    () => createPianoLayout({ lowerStartMidi, upperStartMidi }),
+    [lowerStartMidi, upperStartMidi],
+  )
+  const standardLayout = useMemo(
+    () => createStandardPianoLayout(standardStartMidi),
+    [standardStartMidi],
+  )
+  const activeLayout = instrumentMode === "dual-range" ? dualRangeLayout : standardLayout
+  const activeLayoutRef = useRef(activeLayout)
+
+  useEffect(() => {
+    activeLayoutRef.current = activeLayout
+  }, [activeLayout])
 
   const sustainLabel = sustain ? "Sustain on" : "Sustain off — hold Space or use phone pedal"
   const audioLabel =
@@ -125,11 +157,11 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
     getPianoAudioEngine().noteOff(midi)
   }, [])
 
-  const setSustain = useCallback((source: "keyboard" | "remote-pedal", enabled: boolean) => {
+  const setSustain = useCallback((source: SustainSource, enabled: boolean) => {
     sustainSources.current?.set(source, enabled)
   }, [])
 
-  const resetInstrument = useCallback((updateVisualState: boolean) => {
+  const resetInstrument = useCallback((updateVisualState: boolean, preserveManualLock = false) => {
     for (const timer of activationTimers.current.values()) {
       window.clearTimeout(timer)
     }
@@ -139,7 +171,13 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
     pointerNotes.current.clear()
     pressedCodes.current.clear()
     if (updateVisualState) {
-      sustainSources.current?.clearAll()
+      if (preserveManualLock) {
+        sustainSources.current?.clear("keyboard")
+        sustainSources.current?.clear("remote-pedal")
+      } else {
+        sustainSources.current?.clearAll()
+        setSustainLocked(false)
+      }
     }
 
     if (engineStarted.current) {
@@ -148,7 +186,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
 
     if (updateVisualState) {
       setActiveNotes(new Set())
-      setSustainState(false)
+      setSustainState(sustainSources.current?.active ?? false)
     }
   }, [])
 
@@ -168,7 +206,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
         return
       }
 
-      const key = getPianoKeyByCode(event.code)
+      const key = getPianoKeyByCode(event.code, activeLayoutRef.current)
 
       if (!key || event.repeat || pressedCodes.current.has(event.code)) {
         return
@@ -186,7 +224,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
         return
       }
 
-      const key = getPianoKeyByCode(event.code)
+      const key = getPianoKeyByCode(event.code, activeLayoutRef.current)
 
       if (!key || !pressedCodes.current.delete(event.code)) {
         return
@@ -269,126 +307,148 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
     )
   }
 
-  function renderKey(key: PianoKey) {
-    const active = activeNotes.has(key.midi)
+  function handleModeToggle() {
+    resetInstrument(true, true)
+    setInstrumentMode((current) => (current === "standard" ? "dual-range" : "standard"))
+  }
 
-    return (
-      <button
-        key={key.midi}
-        type="button"
-        aria-label={`Play ${key.note} with ${key.keyboardLabel}`}
-        aria-pressed={active}
-        className={cn(
-          "group/key touch-pan-x select-none focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-          key.isBlack
-            ? "absolute top-0 z-[2] h-[62%] rounded-b-sm border border-border bg-lacquer text-ivory shadow-[var(--shadow-key-black)] active:translate-y-px"
-            : "relative h-full flex-1 rounded-b-md border border-border/65 bg-ivory text-lacquer shadow-[var(--shadow-key-white)] active:bg-primary",
-          active && (key.isBlack ? "translate-y-0.5 bg-secondary" : "bg-primary"),
-        )}
-        style={
-          key.isBlack
-            ? {
-                left: `${(key.whiteIndex + 1) * WHITE_KEY_WIDTH - BLACK_KEY_WIDTH / 2}%`,
-                width: `${BLACK_KEY_WIDTH}%`,
-              }
-            : undefined
-        }
-        onPointerCancel={handlePointerRelease}
-        onPointerDown={(event) => handlePointerDown(key, event)}
-        onPointerUp={handlePointerRelease}
-        onClick={(event) => handleAssistiveClick(key, event)}
-        onKeyDown={(event) => handleKeyButtonDown(key, event)}
-        onKeyUp={(event) => handleKeyButtonUp(key, event)}
-      >
-        <span
-          className={cn(
-            "pointer-events-none absolute inset-x-0 bottom-3 flex flex-col items-center gap-1 font-mono",
-            key.isBlack ? "text-ivory/65" : "text-lacquer/60",
-          )}
-        >
-          <span className="text-[0.5625rem] tracking-[0.08em]">{key.note}</span>
-          <kbd
-            className={cn(
-              "grid size-6 place-items-center rounded-sm border text-[0.625rem] font-bold",
-              key.isBlack ? "border-ivory/20" : "border-lacquer/20",
-            )}
-          >
-            {key.keyboardLabel}
-          </kbd>
-        </span>
-      </button>
-    )
+  function handleRangeChange(zone: PianoZone, startMidi: number) {
+    resetInstrument(true, true)
+    if (zone === "lower") setLowerStartMidi(startMidi)
+    else setUpperStartMidi(startMidi)
+  }
+
+  function handleStandardRangeChange(startMidi: number) {
+    resetInstrument(true, true)
+    setStandardStartMidi(startMidi)
+  }
+
+  const pianoInputProps = {
+    activeNotes,
+    onAssistiveClick: handleAssistiveClick,
+    onKeyButtonDown: handleKeyButtonDown,
+    onKeyButtonUp: handleKeyButtonUp,
+    onPointerDown: handlePointerDown,
+    onPointerRelease: handlePointerRelease,
   }
 
   return (
-    <main className="flex min-h-svh flex-col overflow-hidden bg-background text-foreground">
-      {structuredData ? (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData }} />
-      ) : null}
-      <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-8 sm:py-4 lg:px-10 [@media(max-height:500px)]:py-2">
-        <h1 className="flex items-center gap-4">
-          <span className="font-heading text-3xl leading-none font-medium tracking-tight sm:text-4xl">
-            webpiano
-          </span>
-          <span aria-hidden="true" className="h-6 w-px bg-border" />
-          <span className="font-mono text-[0.5625rem] tracking-[0.14em] text-muted-foreground uppercase sm:text-[0.625rem] sm:tracking-[0.16em]">
-            Online piano
-          </span>
-        </h1>
-
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <PedalConnectDialog onPedalChange={(down) => setSustain("remote-pedal", down)} />
-          <InstrumentStatus label={sustainLabel} variant={sustain ? "default" : "outline"}>
-            <Keyboard aria-hidden="true" />
-          </InstrumentStatus>
-          <InstrumentStatus
-            label={audioLabel}
-            variant={audioStatus === "unavailable" ? "destructive" : "secondary"}
-          >
-            {audioStatus === "idle" ? (
-              <Volume1 aria-hidden="true" />
-            ) : audioStatus === "on" ? (
-              <Volume2 aria-hidden="true" />
-            ) : (
-              <VolumeX aria-hidden="true" />
-            )}
-          </InstrumentStatus>
-        </div>
-      </header>
-
-      <Separator />
-
-      <section className="flex min-h-0 flex-1 flex-col gap-3 px-3 py-3 sm:gap-5 sm:px-8 sm:py-7 lg:px-10 [@media(max-height:500px)]:gap-2 [@media(max-height:500px)]:px-3 [@media(max-height:500px)]:py-2">
-        <div className="flex flex-wrap items-end justify-between gap-4 [@media(max-height:500px)]:hidden">
-          <div className="flex flex-col gap-1">
-            <span className="font-mono text-[0.625rem] tracking-[0.16em] text-brass uppercase">
-              C3 — B4 · 24 notes
+    <div className="min-h-svh bg-background">
+      <OrientationGuide />
+      <main
+        data-instrument-mode={instrumentMode}
+        className="instrument-shell flex min-h-svh flex-col overflow-hidden bg-background text-foreground"
+      >
+        {structuredData ? (
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData }} />
+        ) : null}
+        <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-8 sm:py-4 lg:px-10 [@media(max-height:500px)]:py-2">
+          <h1 className="flex items-center gap-4">
+            <span className="font-heading text-3xl leading-none font-medium tracking-tight sm:text-4xl">
+              webpiano
             </span>
-            <p className="max-w-2xl text-sm text-muted-foreground">
-              Play this free online piano with your computer keyboard or touch. No download or
-              sign-up.
-            </p>
-          </div>
+            <span aria-hidden="true" className="h-6 w-px bg-border" />
+            <span className="font-mono text-[0.5625rem] tracking-[0.14em] text-muted-foreground uppercase sm:text-[0.625rem] sm:tracking-[0.16em]">
+              Online piano
+            </span>
+          </h1>
 
-          <div className="flex flex-wrap gap-x-5 gap-y-1 font-mono text-[0.625rem] tracking-[0.1em] text-muted-foreground uppercase">
-            <span>Z–M · lower octave</span>
-            <span>Q–U · upper octave</span>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <PedalMenu
+              sustainLocked={sustainLocked}
+              onPhonePedalChange={(down) => setSustain("remote-pedal", down)}
+              onSustainLockChange={(enabled) => {
+                setSustainLocked(enabled)
+                setSustain("manual-lock", enabled)
+              }}
+            />
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    aria-label={
+                      instrumentMode === "dual-range" ? "Close Dual Range" : "Open Dual Range"
+                    }
+                    aria-pressed={instrumentMode === "dual-range"}
+                    size="icon"
+                    variant={instrumentMode === "dual-range" ? "secondary" : "outline"}
+                    onClick={handleModeToggle}
+                  />
+                }
+              >
+                <SlidersHorizontal aria-hidden="true" />
+              </TooltipTrigger>
+              <TooltipContent>Play two independent keyboard ranges</TooltipContent>
+            </Tooltip>
+            <InstrumentStatus label={sustainLabel} variant={sustain ? "default" : "outline"}>
+              <Keyboard aria-hidden="true" />
+            </InstrumentStatus>
+            <InstrumentStatus
+              label={audioLabel}
+              variant={audioStatus === "unavailable" ? "destructive" : "secondary"}
+            >
+              {audioStatus === "idle" ? (
+                <Volume1 aria-hidden="true" />
+              ) : audioStatus === "on" ? (
+                <Volume2 aria-hidden="true" />
+              ) : (
+                <VolumeX aria-hidden="true" />
+              )}
+            </InstrumentStatus>
           </div>
-        </div>
+        </header>
 
-        <div className="flex min-h-[24rem] flex-1 overflow-x-auto rounded-lg border border-border bg-card p-2 shadow-[var(--shadow-piano)] sm:p-3 [@media(max-height:500px)]:min-h-[15rem] [@media(max-height:500px)]:p-2">
-          <fieldset className="min-h-[23rem] min-w-[52rem] flex-1 overflow-hidden rounded-md border border-border bg-lacquer p-0 [@media(max-height:500px)]:min-h-[14rem]">
-            <legend className="sr-only">Playable piano</legend>
-            <div className="relative h-full min-h-[23rem] [@media(max-height:500px)]:min-h-[14rem]">
-              <div className="absolute inset-0 flex">{WHITE_KEYS.map(renderKey)}</div>
-              {BLACK_KEYS.map(renderKey)}
+        <Separator />
+
+        <section className="flex min-h-0 flex-1 flex-col gap-3 px-3 py-3 sm:gap-5 sm:px-8 sm:py-7 lg:px-10 [@media(max-height:500px)]:gap-2 [@media(max-height:500px)]:px-3 [@media(max-height:500px)]:py-2">
+          <div className="flex flex-wrap items-end justify-between gap-4 [@media(max-height:500px)]:hidden">
+            <div className="flex flex-col gap-1">
+              <span className="font-mono text-[0.625rem] tracking-[0.16em] text-brass uppercase">
+                {instrumentMode === "standard"
+                  ? `${formatPianoRange(standardStartMidi, STANDARD_RANGE_NOTE_COUNT)} · 32 notes`
+                  : "A0 — C8 navigator · 2 active ranges"}
+              </span>
+              <p className="max-w-2xl text-sm text-muted-foreground">
+                Play this free online piano with your computer keyboard or touch. No download or
+                sign-up.
+              </p>
             </div>
-          </fieldset>
-        </div>
-      </section>
 
-      <Separator />
-      <SiteFooter />
-    </main>
+            <div className="flex flex-wrap gap-x-5 gap-y-1 font-mono text-[0.625rem] tracking-[0.1em] text-muted-foreground uppercase">
+              <span>Z–/ · lower reach</span>
+              <span>Q–] · upper reach</span>
+            </div>
+          </div>
+
+          <div
+            className={cn(
+              "min-h-[24rem] flex-1 rounded-lg border border-border bg-card p-2 shadow-[var(--shadow-piano)] sm:p-3 [@media(max-height:500px)]:min-h-[15rem] [@media(max-height:500px)]:p-2",
+              instrumentMode === "standard" ? "flex overflow-x-auto" : "grid overflow-hidden",
+            )}
+          >
+            {instrumentMode === "standard" ? (
+              <StandardPianoView
+                {...pianoInputProps}
+                keys={standardLayout.keys}
+                startMidi={standardStartMidi}
+                onRangeChange={handleStandardRangeChange}
+              />
+            ) : (
+              <DualRangeView
+                {...pianoInputProps}
+                lowerKeys={dualRangeLayout.lowerKeys}
+                lowerStartMidi={lowerStartMidi}
+                upperKeys={dualRangeLayout.upperKeys}
+                upperStartMidi={upperStartMidi}
+                onRangeChange={handleRangeChange}
+              />
+            )}
+          </div>
+        </section>
+
+        <Separator />
+        <SiteFooter />
+      </main>
+    </div>
   )
 }

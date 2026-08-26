@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test"
 
 test("pairs a phone pedal and applies sustain over WebRTC", async ({ browser, page }) => {
   await page.goto("/")
-  await page.getByRole("button", { name: "Use phone as pedal" }).click()
+  await page.getByRole("button", { name: "Pedal" }).click()
+  await page.getByRole("menuitem", { name: /Use phone as pedal/ }).click()
 
   const dialog = page.getByRole("dialog")
   await expect(dialog.getByRole("img", { name: "QR code for phone pedal" })).toBeVisible()
@@ -19,7 +20,8 @@ test("pairs a phone pedal and applies sustain over WebRTC", async ({ browser, pa
   try {
     await phone.goto(joinUrl ?? "")
     await expect(phone.getByText("Connected · WebRTC")).toBeVisible()
-    await expect(page.getByRole("button", { name: "Phone pedal connected" })).toBeVisible()
+    await expect(dialog).toBeHidden()
+    await expect(page.getByRole("button", { name: "Pedal" })).toBeVisible()
 
     const pedal = phone.getByRole("button", { name: "Sustain pedal" })
     const pedalBox = await pedal.boundingBox()

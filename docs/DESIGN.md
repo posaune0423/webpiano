@@ -38,10 +38,22 @@ The base radius is 4px. Panels may use 8px (`rounded-lg`); controls and labels s
 - Badges are rectangular instrument labels, never promotional pills.
 - Borders are finer and more important than shadows. Shadows communicate physical depth only on primary panels.
 - No fake call-to-action is shown for a feature that is not available.
-- `/` is the instrument on every device, not an LP or user-agent fork. The two-octave keyboard owns the available viewport, uses landscape as the primary phone layout, and scrolls horizontally inside its own panel in portrait.
+- Dynamic content never claims layout after it resolves. Its container reserves the final geometry,
+  and loading states use matching shadcn Skeleton blocks so content replaces them in place.
+- `/` opens directly into the standard 32-note single keyboard. Dual Range is an explicit opt-in header mode and never replaces the simple first view.
+- Dual Range uses an approximately 8.2:1 A0–C8 navigator with two draggable, semitone-snapped translucent range windows. LOWER exposes 17 bindings (`Z–/`) and UPPER exposes 20 (`Q–]`) in enlarged keyboards below it.
+- The standard first view exposes 32 notes from the same 37 physical bindings, combines overlapping key labels, and moves the complete range one semitone at a time.
+- The instrument uses landscape as the primary phone layout. Portrait shows only a restrained orientation guide; the playable surface is not compressed into portrait.
 - Piano keys are specialized native buttons with visible note/PC-key labels, a physical two-black/three-black pattern, pressed state, pointer capture, and keyboard/assistive activation.
 - “Use phone as pedal” opens a focused shadcn Dialog with a short-lived QR code. After pairing, the Dialog closes so the keyboard remains playable and the header retains the connection control.
+- The pedal icon opens one menu containing the manual sustain lock and “Use phone as pedal”. The QR dialog keeps one fixed-height session slot across creating, waiting, failure, and connected states.
 - `/pedal/[sessionId]` is a dedicated full-screen controller: small diagnostic connection copy above one large metal pedal rendered with semantic-token SVG/CSS. It has no piano keyboard or marketing content.
+
+## Wireframes
+
+- Before changing UI structure or wording, capture the current rendered UI and create desktop and affected mobile wireframes under `docs/wireframes/`.
+- Wireframes extend the actual product surface and semantic tokens; they are not independent redesigns or generic mockups.
+- The selected references are `semitone-range-standard-desktop.png`, `semitone-range-dual-desktop.png`, and the corresponding dragging/mobile landscape variants.
 
 ## Motion
 
