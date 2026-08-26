@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 
 import { render, screen } from "@testing-library/react"
 
-import OfflinePage from "./page"
+import OfflinePage from "@/app/~offline/page"
 
 describe("offline fallback", () => {
   test("explains how to reconnect without a dead-end action", () => {

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
-const root = join(import.meta.dir, "..")
+const root = join(import.meta.dir, "../..")
 
 function read(path: string) {
   return readFileSync(join(root, path), "utf8")

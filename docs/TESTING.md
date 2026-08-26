@@ -12,14 +12,22 @@
 ## Commands
 
 ```sh
-bun test
-bun run e2e
-bun run e2e:pwa
+bun run test:unit
+bun run test:integration
+bun run test:e2e
+bun run test:e2e:pwa
 bun run typecheck
 bun run lint
 bun run build
 bun run cf:build
 ```
+
+## Layout
+
+- `tests/unit` contains isolated logic and pure configuration-function tests.
+- `tests/integration` contains rendered component, repository contract, asset, environment, and runtime integration tests.
+- `tests/e2e` contains browser and PWA journeys executed by Playwright.
+- `tests/support` contains Bun DOM setup shared by unit and integration tests.
 
 ## Acceptance surfaces
 

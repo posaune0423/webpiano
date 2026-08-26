@@ -9,7 +9,7 @@ interface OxlintConfig {
   rules: Record<string, unknown>
 }
 
-const root = join(import.meta.dir, "..")
+const root = join(import.meta.dir, "../..")
 const config = JSON.parse(readFileSync(join(root, ".oxlintrc.json"), "utf8")) as OxlintConfig
 
 describe("Oxlint contract", () => {
@@ -47,6 +47,11 @@ describe("Oxlint contract", () => {
       "typescript/switch-exhaustiveness-check": "error",
       "react/rules-of-hooks": "error",
       "react/exhaustive-deps": "warn",
+      "react/immutability": "error",
+      "react/purity": "error",
+      "react/refs": "error",
+      "react/set-state-in-effect": "error",
+      "react/static-components": "error",
       "unicorn/filename-case": ["error", { case: "kebabCase" }],
       "nextjs/no-img-element": "warn",
       "jsx-a11y/alt-text": "error",
@@ -55,5 +60,13 @@ describe("Oxlint contract", () => {
 
   test("retains only the JavaScript plugin that does not pull in ESLint", () => {
     expect(config.jsPlugins).toEqual([{ name: "security", specifier: "eslint-plugin-security" }])
+  })
+
+  test("uses native React rules for the enforceable effect guidance", () => {
+    expect(config.jsPlugins).not.toContainEqual(
+      expect.objectContaining({ name: "react-you-might-not-need-an-effect" }),
+    )
+    expect(config.rules["react/set-state-in-effect"]).toBe("error")
+    expect(config.rules["react/exhaustive-deps"]).toBe("warn")
   })
 })

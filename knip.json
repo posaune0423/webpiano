@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["open-next.config.ts", "src/app/sw.ts", "e2e/**/*.ts", "test/**/*.ts"],
+  "entry": ["open-next.config.ts", "src/app/sw.ts", "tests/**/*.{ts,tsx}"],
   "ignoreIssues": {
     "src/components/ui/**": ["exports"]
   }

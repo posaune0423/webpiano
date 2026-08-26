@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 
 import { render, screen } from "@testing-library/react"
 
-import Home from "./page"
+import Home from "@/app/page"
 
 describe("piano page", () => {
   test("opens directly into the playable instrument", () => {

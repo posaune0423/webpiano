@@ -30,8 +30,8 @@ Open [http://localhost:3000](http://localhost:3000). Development uses Turbopack;
 
 ```sh
 bun run check
-bun run e2e
-bun run e2e:pwa
+bun run test:e2e
+bun run test:e2e:pwa
 bun run cf:build
 bun run preview
 ```

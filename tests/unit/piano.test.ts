@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { PIANO_KEYS, getPianoKeyByCode, midiToFrequency } from "./piano"
+import { PIANO_KEYS, getPianoKeyByCode, midiToFrequency } from "@/lib/piano"
 
 describe("piano keyboard mapping", () => {
   test("maps two chromatic octaves onto the two PC keyboard rows", () => {

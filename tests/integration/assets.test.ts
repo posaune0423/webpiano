@@ -4,7 +4,7 @@ import { join } from "node:path"
 
 import { imageSize } from "image-size"
 
-const root = join(import.meta.dir, "..")
+const root = join(import.meta.dir, "../..")
 
 interface AssetExpectation {
   format: string

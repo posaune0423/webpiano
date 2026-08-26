@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from "bun:test"
 
-import { SynthPianoEngine } from "./piano-audio"
+import { SynthPianoEngine } from "@/lib/piano-audio"
 
 describe("SynthPianoEngine", () => {
   test("resumes the interactive audio context before starting a note", async () => {

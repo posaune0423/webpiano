@@ -4,7 +4,7 @@ import { join } from "node:path"
 
 import { parse } from "jsonc-parser"
 
-const root = join(import.meta.dir, "..")
+const root = join(import.meta.dir, "../..")
 
 function read(path: string) {
   return readFileSync(join(root, path), "utf8")

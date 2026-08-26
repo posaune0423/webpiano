@@ -1,6 +1,6 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, spyOn, test } from "bun:test"
 
-import { createAppEnv } from "./env"
+import { createAppEnv } from "@/env"
 
 describe("application environment", () => {
   test("accepts the public application URL", () => {
@@ -12,6 +12,12 @@ describe("application environment", () => {
   })
 
   test("rejects a malformed public application URL", () => {
-    expect(() => createAppEnv({ NEXT_PUBLIC_APP_URL: "not-a-url" })).toThrow()
+    const consoleError = spyOn(console, "error").mockImplementation(() => {})
+
+    try {
+      expect(() => createAppEnv({ NEXT_PUBLIC_APP_URL: "not-a-url" })).toThrow()
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 })

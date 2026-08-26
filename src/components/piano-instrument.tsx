@@ -108,6 +108,8 @@ export function PianoInstrument() {
     }
   }, [])
 
+  // Synchronize the instrument with browser-global keyboard and focus events.
+  // https://react.dev/learn/you-might-not-need-an-effect#synchronizing-with-external-systems
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (isEditableTarget(event.target) || event.metaKey || event.ctrlKey || event.altKey) {

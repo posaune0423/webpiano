@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import manifest from "./manifest"
+import manifest from "@/app/manifest"
 
 describe("web app manifest", () => {
   test("describes an installable dark-first PWA", () => {

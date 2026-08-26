@@ -2,9 +2,8 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
 
 import { fireEvent, render, screen } from "@testing-library/react"
 
+import { PianoInstrument } from "@/components/piano-instrument"
 import { setPianoAudioEngineForTesting } from "@/lib/piano-audio"
-
-import { PianoInstrument } from "./piano-instrument"
 
 const noteOn = mock(async () => {})
 const noteOff = mock(() => {})

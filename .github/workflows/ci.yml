@@ -53,7 +53,7 @@ jobs:
         run: bunx playwright install --with-deps chromium
 
       - name: Run Playwright
-        run: bun run e2e
+        run: bun run test:e2e
 
       - name: Verify PWA in workerd
-        run: bun run e2e:pwa
+        run: bun run test:e2e:pwa
