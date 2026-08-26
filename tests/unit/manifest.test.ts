@@ -11,6 +11,7 @@ describe("web app manifest", () => {
       short_name: "webpiano",
       start_url: "/",
       display: "standalone",
+      orientation: "landscape",
       background_color: "#11100f",
       theme_color: "#11100f",
     })

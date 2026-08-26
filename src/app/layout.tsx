@@ -4,6 +4,7 @@ import type { ReactNode } from "react"
 
 import { createAppEnv } from "@/env"
 import { cn } from "@/lib/utils"
+import { PedalApiProvider } from "@/trpc/client"
 
 import "./globals.css"
 
@@ -68,7 +69,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       lang="en"
       className={cn("dark", headingFont.variable, bodyFont.variable, monoFont.variable)}
     >
-      <body className="min-h-svh font-sans antialiased">{children}</body>
+      <body className="min-h-svh font-sans antialiased">
+        <PedalApiProvider>{children}</PedalApiProvider>
+      </body>
     </html>
   )
 }

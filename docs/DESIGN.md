@@ -38,12 +38,15 @@ The base radius is 4px. Panels may use 8px (`rounded-lg`); controls and labels s
 - Badges are rectangular instrument labels, never promotional pills.
 - Borders are finer and more important than shadows. Shadows communicate physical depth only on primary panels.
 - No fake call-to-action is shown for a feature that is not available.
-- `/` is the instrument, not an LP: the two-octave keyboard owns the available viewport and scrolls horizontally inside its own panel on narrow screens.
+- `/` is the instrument on every device, not an LP or user-agent fork. The two-octave keyboard owns the available viewport, uses landscape as the primary phone layout, and scrolls horizontally inside its own panel in portrait.
 - Piano keys are specialized native buttons with visible note/PC-key labels, a physical two-black/three-black pattern, pressed state, pointer capture, and keyboard/assistive activation.
+- “Use phone as pedal” opens a focused shadcn Dialog with a short-lived QR code. After pairing, the Dialog closes so the keyboard remains playable and the header retains the connection control.
+- `/pedal/[sessionId]` is a dedicated full-screen controller: small diagnostic connection copy above one large metal pedal rendered with semantic-token SVG/CSS. It has no piano keyboard or marketing content.
 
 ## Motion
 
 - Motion is functional: key press, pedal state, focus, loading, or route change.
+- The phone pedal moves only while touched. Connecting/reconnecting may pulse; connected is steady, and all non-essential status animation stops under `prefers-reduced-motion`.
 - Default transitions stay within 120–220ms with restrained easing.
 - Do not animate the instrument merely to make it look active; key motion must reflect input.
 - `prefers-reduced-motion` collapses non-essential animation and smooth scrolling.

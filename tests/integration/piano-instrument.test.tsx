@@ -4,11 +4,20 @@ import { fireEvent, render, screen } from "@testing-library/react"
 
 import { PianoInstrument } from "@/components/piano-instrument"
 import { setPianoAudioEngineForTesting } from "@/lib/piano-audio"
+import { PedalApiProvider } from "@/trpc/client"
 
 const noteOn = mock(async () => {})
 const noteOff = mock(() => {})
 const setSustain = mock(() => {})
 const allNotesOff = mock(() => {})
+
+function renderInstrument() {
+  return render(
+    <PedalApiProvider>
+      <PianoInstrument />
+    </PedalApiProvider>,
+  )
+}
 
 describe("PianoInstrument", () => {
   beforeEach(() => {
@@ -24,17 +33,18 @@ describe("PianoInstrument", () => {
   })
 
   test("renders two playable octaves immediately", () => {
-    render(<PianoInstrument />)
+    renderInstrument()
 
     expect(screen.getByRole("heading", { level: 1, name: "webpiano" })).toBeTruthy()
     expect(screen.getByRole("group", { name: "Playable piano" })).toBeTruthy()
     expect(screen.getAllByRole("button", { name: /Play / })).toHaveLength(24)
     expect(screen.getByText("Z–M · lower octave")).toBeTruthy()
     expect(screen.getByText("Q–U · upper octave")).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Use phone as pedal" })).toBeTruthy()
   })
 
   test("plays and releases mapped PC keys without repeating held notes", () => {
-    render(<PianoInstrument />)
+    renderInstrument()
 
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
     fireEvent.keyDown(window, { code: "KeyZ", repeat: true })
@@ -52,7 +62,7 @@ describe("PianoInstrument", () => {
   })
 
   test("plays pointer input and uses Space as the sustain pedal", () => {
-    render(<PianoInstrument />)
+    renderInstrument()
 
     const key = screen.getByRole("button", { name: "Play C4 with Q" })
     fireEvent.pointerDown(key, { pointerId: 7 })
@@ -67,7 +77,7 @@ describe("PianoInstrument", () => {
   })
 
   test("releases held notes when the window loses focus", () => {
-    render(<PianoInstrument />)
+    renderInstrument()
 
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
     fireEvent.blur(window)
@@ -76,7 +86,7 @@ describe("PianoInstrument", () => {
   })
 
   test("keeps a note sounding until its final input source releases", () => {
-    render(<PianoInstrument />)
+    renderInstrument()
 
     const c3 = screen.getByRole("button", { name: "Play C3 with Z" })
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
@@ -95,7 +105,7 @@ describe("PianoInstrument", () => {
   })
 
   test("releases every voice and pedal state when unmounted", () => {
-    const view = render(<PianoInstrument />)
+    const view = renderInstrument()
 
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
     fireEvent.keyDown(window, { code: "Space", repeat: false })
@@ -105,7 +115,7 @@ describe("PianoInstrument", () => {
   })
 
   test("supports focused-key and assistive activation while announcing audio status", () => {
-    render(<PianoInstrument />)
+    renderInstrument()
 
     const c4 = screen.getByRole("button", { name: "Play C4 with Q" })
     fireEvent.keyDown(c4, { code: "Enter", key: "Enter", repeat: false })
