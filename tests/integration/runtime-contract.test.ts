@@ -18,6 +18,12 @@ describe("runtime contract", () => {
     expect(envSource).not.toContain("createAppEnv")
   })
 
+  test("keeps metadata settings under constants", () => {
+    expect(read("src/constants/metadata.ts")).toContain("export const HOME_METADATA")
+    expect(read("src/constants/metadata.ts")).toContain("export const APP_VIEWPORT")
+    expect(() => read("src/lib/seo.ts")).toThrow()
+  })
+
   test("uses the official Next.js Google Analytics integration", () => {
     const packageJson = JSON.parse(read("package.json")) as {
       dependencies: Record<string, string>

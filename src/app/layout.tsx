@@ -1,13 +1,13 @@
 import { GoogleAnalytics } from "@next/third-parties/google"
-import type { Metadata, Viewport } from "next"
+import type { Metadata } from "next"
 import { Cormorant_Garamond, Inter, Space_Mono } from "next/font/google"
 import { ViewTransition } from "react"
 import type { ReactNode } from "react"
 
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { GOOGLE_ANALYTICS_ID } from "@/constants/analytics"
+import { APP_VIEWPORT, HOME_METADATA } from "@/constants/metadata"
 import { env } from "@/env"
-import { GOOGLE_ANALYTICS_ID } from "@/lib/analytics"
-import { createHomeMetadata } from "@/lib/seo"
 import { cn } from "@/lib/utils"
 import { PedalApiProvider } from "@/trpc/client"
 
@@ -30,12 +30,11 @@ const monoFont = Space_Mono({
   weight: ["400", "700"],
 })
 
-export const metadata: Metadata = createHomeMetadata(env.NEXT_PUBLIC_APP_URL)
-
-export const viewport: Viewport = {
-  colorScheme: "dark",
-  themeColor: "#11100f",
+export const metadata: Metadata = {
+  ...HOME_METADATA,
+  metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
 }
+export const viewport = APP_VIEWPORT
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

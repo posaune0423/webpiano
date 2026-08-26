@@ -10,6 +10,12 @@ test("serves the indexable home metadata and structured application data", async
   await expect(page).toHaveTitle(homeTitle)
   await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", homeDescription)
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "index, follow")
+  await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
+    "content",
+    "width=device-width, initial-scale=1",
+  )
+  await expect(page.locator('meta[name="color-scheme"]')).toHaveAttribute("content", "dark")
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#11100f")
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
     "href",
     "http://localhost:3000",

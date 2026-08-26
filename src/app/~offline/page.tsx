@@ -1,13 +1,7 @@
-import type { Metadata } from "next"
-
 import { Separator } from "@/components/ui/separator"
+import { OFFLINE_METADATA } from "@/constants/metadata"
 
-export const metadata: Metadata = {
-  alternates: { canonical: null },
-  description: "Reconnect to continue with webpiano.",
-  robots: { follow: true, index: false },
-  title: "Offline — webpiano",
-}
+export const metadata = OFFLINE_METADATA
 
 export default function OfflinePage() {
   return (

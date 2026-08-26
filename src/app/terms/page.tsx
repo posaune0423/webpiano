@@ -1,27 +1,7 @@
-import type { Metadata } from "next"
-
 import { LegalPage, LegalSection } from "@/components/legal-page"
+import { TERMS_METADATA } from "@/constants/metadata"
 
-const title = "Terms — webpiano"
-const description = "Terms for using webpiano."
-
-export const metadata: Metadata = {
-  alternates: { canonical: "/terms" },
-  description,
-  openGraph: {
-    description,
-    siteName: "webpiano",
-    title,
-    type: "website",
-    url: "/terms",
-  },
-  title,
-  twitter: {
-    card: "summary_large_image",
-    description,
-    title,
-  },
-}
+export const metadata = TERMS_METADATA
 
 export default function TermsPage() {
   return (

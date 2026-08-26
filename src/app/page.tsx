@@ -1,8 +1,7 @@
 import { PianoInstrument } from "@/components/piano-instrument"
-import { createWebApplicationJsonLd, serializeJsonLd } from "@/lib/seo"
-
-const webApplicationJsonLd = createWebApplicationJsonLd("https://webpiano.xyz")
+import { WEB_APPLICATION_JSON_LD } from "@/constants/metadata"
+import { serializeJsonLd } from "@/lib/json-ld"
 
 export default function Home() {
-  return <PianoInstrument structuredData={serializeJsonLd(webApplicationJsonLd)} />
+  return <PianoInstrument structuredData={serializeJsonLd(WEB_APPLICATION_JSON_LD)} />
 }

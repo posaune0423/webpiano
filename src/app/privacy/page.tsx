@@ -1,27 +1,7 @@
-import type { Metadata } from "next"
-
 import { LegalPage, LegalSection } from "@/components/legal-page"
+import { PRIVACY_METADATA } from "@/constants/metadata"
 
-const title = "Privacy Policy — webpiano"
-const description = "How webpiano handles data and Google Analytics."
-
-export const metadata: Metadata = {
-  alternates: { canonical: "/privacy" },
-  description,
-  openGraph: {
-    description,
-    siteName: "webpiano",
-    title,
-    type: "website",
-    url: "/privacy",
-  },
-  title,
-  twitter: {
-    card: "summary_large_image",
-    description,
-    title,
-  },
-}
+export const metadata = PRIVACY_METADATA
 
 export default function PrivacyPage() {
   return (

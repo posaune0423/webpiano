@@ -8,13 +8,14 @@ const description =
 
 describe("home metadata", () => {
   test("describes the playable online piano consistently", async () => {
-    const metadataModule = join(import.meta.dir, "../../src/lib/seo.ts")
+    const metadataModule = join(import.meta.dir, "../../src/constants/metadata.ts")
     expect(existsSync(metadataModule)).toBeTrue()
-    const { createHomeMetadata, createWebApplicationJsonLd, serializeJsonLd } =
-      await import("@/lib/seo")
-    const metadata = createHomeMetadata("https://webpiano.xyz")
+    expect(existsSync(join(import.meta.dir, "../../src/lib/seo.ts"))).toBeFalse()
+    const { APP_VIEWPORT, HOME_METADATA, WEB_APPLICATION_JSON_LD } =
+      await import("@/constants/metadata")
+    const { serializeJsonLd } = await import("@/lib/json-ld")
 
-    expect(metadata).toMatchObject({
+    expect(HOME_METADATA).toMatchObject({
       alternates: { canonical: "/" },
       description,
       openGraph: {
@@ -51,7 +52,14 @@ describe("home metadata", () => {
       },
     })
 
-    expect(createWebApplicationJsonLd("https://webpiano.xyz")).toMatchObject({
+    expect(APP_VIEWPORT).toEqual({
+      colorScheme: "dark",
+      initialScale: 1,
+      themeColor: "#11100f",
+      width: "device-width",
+    })
+
+    expect(WEB_APPLICATION_JSON_LD).toMatchObject({
       "@context": "https://schema.org",
       "@type": "WebApplication",
       applicationCategory: "MusicApplication",
