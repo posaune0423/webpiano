@@ -73,6 +73,7 @@ await Bun.write(temporaryConfig, `${JSON.stringify(config, null, 2)}\n`)
 
 const environment = { ...process.env }
 environment.WRANGLER_CI_OVERRIDE_NAME = workerName
+delete environment.WRANGLER_CI_MATCH_TAG
 
 try {
   const deployment = Bun.spawn(

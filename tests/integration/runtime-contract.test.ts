@@ -65,6 +65,7 @@ describe("runtime contract", () => {
     expect(workflow).toContain("cloudflare-preview-url")
     expect(workflow).toContain("yamadaasuma.workers.dev")
     expect(deployPreview).toContain("environment.WRANGLER_CI_OVERRIDE_NAME = workerName")
+    expect(deployPreview).toContain("delete environment.WRANGLER_CI_MATCH_TAG")
   })
 
   test("defines the typed public URL for development and production", () => {
