@@ -64,7 +64,15 @@ test("opens directly into the responsive playable piano without page overflow", 
   const main = page.getByRole("main")
   const piano = main.getByRole("group", { name: "Playable piano" })
 
-  await expect(main.getByRole("heading", { level: 1, name: "webpiano" })).toBeVisible()
+  await expect(main.getByRole("heading", { level: 1, name: "webpiano Online piano" })).toBeVisible()
+  const taskDescription = main.getByText(
+    "Play this free online piano with your computer keyboard or touch. No download or sign-up.",
+  )
+  if (testInfo.project.name === "mobile-landscape-chromium") {
+    await expect(taskDescription).toBeAttached()
+  } else {
+    await expect(taskDescription).toBeVisible()
+  }
   await expect(piano).toBeVisible()
   await expect(main.getByRole("button", { name: /Play / })).toHaveCount(24)
   await expect(main.getByRole("button", { name: "Use phone as pedal" })).toBeVisible()
