@@ -40,7 +40,19 @@ describe("PianoInstrument", () => {
     expect(screen.getAllByRole("button", { name: /Play / })).toHaveLength(24)
     expect(screen.getByText("Z–M · lower octave")).toBeTruthy()
     expect(screen.getByText("Q–U · upper octave")).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Use phone as pedal" })).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Use phone as pedal" }).textContent).toBe("")
+    expect(
+      screen.getByRole("status", {
+        name: "Sustain off — hold Space or use phone pedal",
+      }),
+    ).toBeTruthy()
+    expect(screen.getByRole("status", { name: "Play a note to start audio" })).toBeTruthy()
+    expect(screen.queryByText("Fixed touch · mf")).toBeNull()
+    expect(screen.queryByText("Space holds the pedal")).toBeNull()
+    expect(screen.getByRole("link", { name: "Terms" }).getAttribute("href")).toBe("/terms")
+    expect(screen.getByRole("link", { name: "Privacy Policy" }).getAttribute("href")).toBe(
+      "/privacy",
+    )
   })
 
   test("plays and releases mapped PC keys without repeating held notes", () => {
@@ -54,7 +66,7 @@ describe("PianoInstrument", () => {
     expect(
       screen.getByRole("button", { name: "Play C3 with Z" }).getAttribute("aria-pressed"),
     ).toBe("true")
-    expect(screen.getByText("Sound on")).toBeTruthy()
+    expect(screen.getByRole("status", { name: "Sound on" })).toBeTruthy()
 
     fireEvent.keyUp(window, { code: "KeyZ" })
 
@@ -68,7 +80,13 @@ describe("PianoInstrument", () => {
     fireEvent.pointerDown(key, { pointerId: 7 })
     fireEvent.pointerUp(key, { pointerId: 7 })
     fireEvent.keyDown(window, { code: "Space", repeat: false })
+    expect(screen.getByRole("status", { name: "Sustain on" })).toBeTruthy()
     fireEvent.keyUp(window, { code: "Space" })
+    expect(
+      screen.getByRole("status", {
+        name: "Sustain off — hold Space or use phone pedal",
+      }),
+    ).toBeTruthy()
 
     expect(noteOn).toHaveBeenCalledWith(60, 0.68)
     expect(noteOff).toHaveBeenCalledWith(60)
@@ -121,7 +139,7 @@ describe("PianoInstrument", () => {
     fireEvent.keyDown(c4, { code: "Enter", key: "Enter", repeat: false })
 
     expect(noteOn).toHaveBeenCalledWith(60, 0.68)
-    expect(screen.getByRole("status").textContent).toBe("Sound on")
+    expect(screen.getByRole("status", { name: "Sound on" })).toBeTruthy()
 
     fireEvent.keyUp(c4, { code: "Enter", key: "Enter" })
 

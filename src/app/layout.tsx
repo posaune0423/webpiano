@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next"
 import { Cormorant_Garamond, Inter, Space_Mono } from "next/font/google"
+import { ViewTransition } from "react"
 import type { ReactNode } from "react"
 
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { createAppEnv } from "@/env"
 import { cn } from "@/lib/utils"
 import { PedalApiProvider } from "@/trpc/client"
@@ -70,7 +72,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       className={cn("dark", headingFont.variable, bodyFont.variable, monoFont.variable)}
     >
       <body className="min-h-svh font-sans antialiased">
-        <PedalApiProvider>{children}</PedalApiProvider>
+        <TooltipProvider>
+          <PedalApiProvider>
+            <ViewTransition name="crossfade">{children}</ViewTransition>
+          </PedalApiProvider>
+        </TooltipProvider>
       </body>
     </html>
   )

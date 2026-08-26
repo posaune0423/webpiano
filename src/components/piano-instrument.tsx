@@ -1,5 +1,6 @@
 "use client"
 
+import { Keyboard, Volume1, Volume2, VolumeX } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import type {
   KeyboardEvent as ReactKeyboardEvent,
@@ -8,8 +9,10 @@ import type {
 } from "react"
 
 import { PedalConnectDialog } from "@/components/pedal-connect-dialog"
+import { SiteFooter } from "@/components/site-footer"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { PIANO_KEYS, getPianoKeyByCode } from "@/lib/piano"
 import type { PianoKey } from "@/lib/piano"
 import { getPianoAudioEngine } from "@/lib/piano-audio"
@@ -23,6 +26,32 @@ const WHITE_KEY_WIDTH = 100 / WHITE_KEYS.length
 const BLACK_KEY_WIDTH = WHITE_KEY_WIDTH * 0.62
 
 type AudioStatus = "idle" | "on" | "unavailable"
+
+interface InstrumentStatusProps {
+  children: React.ReactNode
+  label: string
+  variant: "default" | "destructive" | "outline" | "secondary"
+}
+
+function InstrumentStatus({ children, label, variant }: InstrumentStatusProps) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Badge
+            // Icon-only status needs a focus target so keyboard users can open its tooltip.
+            // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+            render={<output aria-label={label} aria-live="polite" tabIndex={0} />}
+            variant={variant}
+          />
+        }
+      >
+        {children}
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
+}
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -48,6 +77,14 @@ export function PianoInstrument() {
     engineStarted.current = true
     getPianoAudioEngine().setSustain(enabled)
   })
+
+  const sustainLabel = sustain ? "Sustain on" : "Sustain off — hold Space or use phone pedal"
+  const audioLabel =
+    audioStatus === "idle"
+      ? "Play a note to start audio"
+      : audioStatus === "on"
+        ? "Sound on"
+        : "Audio unavailable"
 
   const pressNote = useCallback((midi: number, source: string) => {
     const sources = noteSources.current.get(midi) ?? new Set<string>()
@@ -298,14 +335,21 @@ export function PianoInstrument() {
 
         <div className="flex flex-wrap items-center justify-end gap-2">
           <PedalConnectDialog onPedalChange={(down) => setSustain("remote-pedal", down)} />
-          <Badge variant={sustain ? "default" : "outline"}>Sustain {sustain ? "on" : "off"}</Badge>
-          <Badge variant="secondary" render={<output aria-live="polite" />}>
-            {audioStatus === "idle"
-              ? "First note starts audio"
-              : audioStatus === "on"
-                ? "Sound on"
-                : "Audio unavailable"}
-          </Badge>
+          <InstrumentStatus label={sustainLabel} variant={sustain ? "default" : "outline"}>
+            <Keyboard aria-hidden="true" />
+          </InstrumentStatus>
+          <InstrumentStatus
+            label={audioLabel}
+            variant={audioStatus === "unavailable" ? "destructive" : "secondary"}
+          >
+            {audioStatus === "idle" ? (
+              <Volume1 aria-hidden="true" />
+            ) : audioStatus === "on" ? (
+              <Volume2 aria-hidden="true" />
+            ) : (
+              <VolumeX aria-hidden="true" />
+            )}
+          </InstrumentStatus>
         </div>
       </header>
 
@@ -340,11 +384,7 @@ export function PianoInstrument() {
       </section>
 
       <Separator />
-
-      <footer className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 font-mono text-[0.625rem] tracking-[0.12em] text-muted-foreground uppercase sm:px-8 lg:px-10 [@media(max-height:500px)]:hidden">
-        <span>Fixed touch · mf</span>
-        <span>Space holds the pedal</span>
-      </footer>
+      <SiteFooter />
     </main>
   )
 }

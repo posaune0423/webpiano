@@ -37,7 +37,10 @@ describe("runtime contract", () => {
     const layout = read("src/app/layout.tsx")
 
     expect(layout).toContain('import { PedalApiProvider } from "@/trpc/client"')
-    expect(layout).toContain("<PedalApiProvider>{children}</PedalApiProvider>")
+    expect(layout).toContain("<PedalApiProvider>")
+    expect(layout.indexOf("<PedalApiProvider>")).toBeLessThan(
+      layout.indexOf('<ViewTransition name="crossfade">{children}</ViewTransition>'),
+    )
   })
 
   test("configures a production-only Serwist worker with an offline fallback", () => {

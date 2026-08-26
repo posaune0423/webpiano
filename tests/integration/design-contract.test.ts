@@ -41,4 +41,23 @@ describe("design contract", () => {
     expect(design).toContain("## Motion")
     expect(design).toContain("## Do / Don’t")
   })
+
+  test("crossfades route content while respecting reduced motion", () => {
+    const layout = read("src/app/layout.tsx")
+    const styles = read("src/app/globals.css")
+
+    expect(layout).toContain('ViewTransition name="crossfade"')
+    expect(styles).toContain("::view-transition-old(crossfade)")
+    expect(styles).toContain("::view-transition-new(crossfade)")
+    expect(styles).toContain("filter: blur(4px)")
+    expect(styles).toContain(
+      "animation: 400ms cubic-bezier(0.6, 0, 0.8, 1) forwards crossfade-hide",
+    )
+    expect(styles).toContain("animation: 600ms 200ms forwards crossfade-appear")
+    expect(styles).toContain("@media not (prefers-reduced-motion: reduce)")
+    expect(styles).toContain("::view-transition {\n  pointer-events: none;")
+    expect(styles).toContain("::view-transition-group(*),")
+    expect(styles).toContain("::view-transition-old(*),")
+    expect(styles).toContain("::view-transition-new(*)")
+  })
 })

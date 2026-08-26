@@ -101,7 +101,7 @@ describe("PedalConnectDialog", () => {
     act(() => getPeerOptions()?.onStatusChange?.("connected"))
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
-    expect(screen.getByRole("button", { name: "Pedal connected" })).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Phone pedal connected" })).toBeTruthy()
   })
 
   test("forwards remote pedal state from the peer to the piano", async () => {

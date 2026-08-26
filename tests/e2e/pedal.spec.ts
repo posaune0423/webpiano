@@ -19,7 +19,7 @@ test("pairs a phone pedal and applies sustain over WebRTC", async ({ browser, pa
   try {
     await phone.goto(joinUrl ?? "")
     await expect(phone.getByText("Connected · WebRTC")).toBeVisible()
-    await expect(page.getByRole("button", { name: "Pedal connected" })).toBeVisible()
+    await expect(page.getByRole("button", { name: "Phone pedal connected" })).toBeVisible()
 
     const pedal = phone.getByRole("button", { name: "Sustain pedal" })
     const pedalBox = await pedal.boundingBox()
@@ -27,17 +27,19 @@ test("pairs a phone pedal and applies sustain over WebRTC", async ({ browser, pa
     await phone.mouse.move((pedalBox?.x ?? 0) + 24, (pedalBox?.y ?? 0) + 120)
     await phone.mouse.down()
 
-    await expect(page.getByText("Sustain on")).toBeVisible()
+    await expect(page.getByRole("status", { name: "Sustain on" })).toBeVisible()
 
     const c3 = page.getByRole("button", { name: "Play C3 with Z" })
     await page.keyboard.down("z")
     await expect(c3).toHaveAttribute("aria-pressed", "true")
     await page.keyboard.up("z")
     await expect(c3).toHaveAttribute("aria-pressed", "false")
-    await expect(page.getByText("Sustain on")).toBeVisible()
+    await expect(page.getByRole("status", { name: "Sustain on" })).toBeVisible()
 
     await phone.mouse.up()
-    await expect(page.getByText("Sustain off")).toBeVisible()
+    await expect(
+      page.getByRole("status", { name: "Sustain off — hold Space or use phone pedal" }),
+    ).toBeVisible()
   } finally {
     await phoneContext.close()
   }
