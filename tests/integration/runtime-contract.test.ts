@@ -60,9 +60,11 @@ describe("runtime contract", () => {
       "bun scripts/deploy-cloudflare-preview.ts",
     )
     const workflow = read(".github/workflows/cloudflare-preview.yml")
+    const deployPreview = read("scripts/deploy-cloudflare-preview.ts")
     expect(workflow).toContain("pull-requests: write")
     expect(workflow).toContain("cloudflare-preview-url")
     expect(workflow).toContain("yamadaasuma.workers.dev")
+    expect(deployPreview).toContain("environment.WRANGLER_CI_OVERRIDE_NAME = workerName")
   })
 
   test("defines the typed public URL for development and production", () => {
