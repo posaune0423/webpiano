@@ -56,6 +56,14 @@ describe("legal pages", () => {
     expect(screen.getByText("Last updated: August 26, 2026")).toBeTruthy()
     expect(screen.getByText(/does not require an account/i)).toBeTruthy()
     expect(screen.getByText(/stay in your browser/i)).toBeTruthy()
+    expect(screen.getByRole("heading", { name: "Google Analytics" })).toBeTruthy()
+    expect(screen.getByText(/G-FPXJJ64H74/i)).toBeTruthy()
+    expect(screen.getByText(/approximate geolocation/i)).toBeTruthy()
+    expect(
+      screen
+        .getByRole("link", { name: "Google Analytics privacy information" })
+        .getAttribute("href"),
+    ).toBe("https://support.google.com/analytics/answer/11593727")
     expect(screen.getByText(/WebRTC signaling is relayed/i)).toBeTruthy()
     expect(
       screen.getByText(/stored record is scheduled for deletion around the two-hour mark/i),

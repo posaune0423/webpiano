@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import { LegalPage, LegalSection } from "@/components/legal-page"
 
 const title = "Privacy Policy — webpiano"
-const description = "How webpiano handles data."
+const description = "How webpiano handles data and Google Analytics."
 
 export const metadata: Metadata = {
   alternates: { canonical: "/privacy" },
@@ -26,10 +26,10 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy">
-      <LegalSection title="What webpiano does not collect">
+      <LegalSection title="Accounts and piano input">
         <p>
-          webpiano does not require an account and does not include advertising or product
-          analytics. Your played notes and synthesized audio are not collected by the application.
+          webpiano does not require an account and does not include advertising. Your played notes
+          and synthesized audio are not collected by the application.
         </p>
       </LegalSection>
 
@@ -37,6 +37,27 @@ export default function PrivacyPage() {
         <p>
           Computer-key and pointer input used to play notes, together with the resulting audio
           synthesis, stay in your browser. This information is not sent to the webpiano server.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Google Analytics">
+        <p>
+          webpiano uses Google Analytics 4 with measurement ID <code>G-FPXJJ64H74</code> to
+          understand visits and improve the site. Google Analytics may process page URLs, referrers,
+          browser and device information, session identifiers, and approximate geolocation. It may
+          also use first-party cookies such as <code>_ga</code>. Played notes, synthesized audio,
+          and phone-pedal presses are not sent as analytics events.
+        </p>
+        <p>
+          See{" "}
+          <a
+            href="https://support.google.com/analytics/answer/11593727"
+            rel="noreferrer"
+            target="_blank"
+          >
+            Google Analytics privacy information
+          </a>
+          .
         </p>
       </LegalSection>
 

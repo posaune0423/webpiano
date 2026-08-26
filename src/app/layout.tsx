@@ -1,3 +1,4 @@
+import { GoogleAnalytics } from "@next/third-parties/google"
 import type { Metadata, Viewport } from "next"
 import { Cormorant_Garamond, Inter, Space_Mono } from "next/font/google"
 import { ViewTransition } from "react"
@@ -5,6 +6,7 @@ import type { ReactNode } from "react"
 
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { createAppEnv } from "@/env"
+import { GOOGLE_ANALYTICS_ID } from "@/lib/analytics"
 import { createHomeMetadata } from "@/lib/seo"
 import { cn } from "@/lib/utils"
 import { PedalApiProvider } from "@/trpc/client"
@@ -52,6 +54,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </PedalApiProvider>
         </TooltipProvider>
       </body>
+      <GoogleAnalytics gaId={GOOGLE_ANALYTICS_ID} />
     </html>
   )
 }

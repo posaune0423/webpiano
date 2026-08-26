@@ -11,6 +11,14 @@ function read(path: string) {
 }
 
 describe("runtime contract", () => {
+  test("uses the official Next.js Google Analytics integration", () => {
+    const packageJson = JSON.parse(read("package.json")) as {
+      dependencies: Record<string, string>
+    }
+
+    expect(packageJson.dependencies["@next/third-parties"]).toBe("16.3.2")
+  })
+
   test("keeps development on Turbopack and production on webpack", () => {
     const packageJson = JSON.parse(read("package.json")) as {
       scripts: Record<string, string>
