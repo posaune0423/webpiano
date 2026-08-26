@@ -61,7 +61,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return target.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName)
 }
 
-export function PianoInstrument() {
+export function PianoInstrument({ structuredData }: { structuredData?: string }) {
   const [activeNotes, setActiveNotes] = useState<Set<number>>(() => new Set())
   const [audioStatus, setAudioStatus] = useState<AudioStatus>("idle")
   const [sustain, setSustainState] = useState(false)
@@ -322,16 +322,19 @@ export function PianoInstrument() {
 
   return (
     <main className="flex min-h-svh flex-col overflow-hidden bg-background text-foreground">
+      {structuredData ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData }} />
+      ) : null}
       <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-8 sm:py-4 lg:px-10 [@media(max-height:500px)]:py-2">
-        <div className="flex items-center gap-4">
-          <h1 className="font-heading text-3xl leading-none font-medium tracking-tight sm:text-4xl">
+        <h1 className="flex items-center gap-4">
+          <span className="font-heading text-3xl leading-none font-medium tracking-tight sm:text-4xl">
             webpiano
-          </h1>
-          <Separator orientation="vertical" className="h-6" />
-          <span className="hidden font-mono text-[0.625rem] tracking-[0.16em] text-muted-foreground uppercase sm:inline">
-            Play now
           </span>
-        </div>
+          <span aria-hidden="true" className="h-6 w-px bg-border" />
+          <span className="font-mono text-[0.5625rem] tracking-[0.14em] text-muted-foreground uppercase sm:text-[0.625rem] sm:tracking-[0.16em]">
+            Online piano
+          </span>
+        </h1>
 
         <div className="flex flex-wrap items-center justify-end gap-2">
           <PedalConnectDialog onPedalChange={(down) => setSustain("remote-pedal", down)} />
@@ -361,8 +364,9 @@ export function PianoInstrument() {
             <span className="font-mono text-[0.625rem] tracking-[0.16em] text-brass uppercase">
               C3 — B4 · 24 notes
             </span>
-            <p className="text-sm text-muted-foreground">
-              Use your keyboard, or touch the keys directly.
+            <p className="max-w-2xl text-sm text-muted-foreground">
+              Play this free online piano with your computer keyboard or touch. No download or
+              sign-up.
             </p>
           </div>
 

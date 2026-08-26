@@ -1,10 +1,13 @@
-import type { Metadata, Viewport } from "next"
+import { GoogleAnalytics } from "@next/third-parties/google"
+import type { Metadata } from "next"
 import { Cormorant_Garamond, Inter, Space_Mono } from "next/font/google"
 import { ViewTransition } from "react"
 import type { ReactNode } from "react"
 
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { createAppEnv } from "@/env"
+import { GOOGLE_ANALYTICS_ID } from "@/constants/analytics"
+import { APP_VIEWPORT, HOME_METADATA } from "@/constants/metadata"
+import { env } from "@/env"
 import { cn } from "@/lib/utils"
 import { PedalApiProvider } from "@/trpc/client"
 
@@ -27,43 +30,11 @@ const monoFont = Space_Mono({
   weight: ["400", "700"],
 })
 
-const appEnv = createAppEnv({
-  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-})
-
-const description = "Play a two-octave piano instantly with your computer keyboard or touch."
-
 export const metadata: Metadata = {
-  metadataBase: new URL(appEnv.NEXT_PUBLIC_APP_URL),
-  applicationName: "webpiano",
-  title: "webpiano — Play now",
-  description,
-  alternates: { canonical: "/" },
-  manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "webpiano",
-  },
-  formatDetection: { telephone: false },
-  openGraph: {
-    type: "website",
-    siteName: "webpiano",
-    title: "webpiano — Play now",
-    description,
-    url: "/",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "webpiano — Play now",
-    description,
-  },
+  ...HOME_METADATA,
+  metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
 }
-
-export const viewport: Viewport = {
-  colorScheme: "dark",
-  themeColor: "#11100f",
-}
+export const viewport = APP_VIEWPORT
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
@@ -78,6 +49,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </PedalApiProvider>
         </TooltipProvider>
       </body>
+      <GoogleAnalytics gaId={GOOGLE_ANALYTICS_ID} />
     </html>
   )
 }

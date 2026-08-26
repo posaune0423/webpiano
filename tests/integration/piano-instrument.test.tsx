@@ -35,7 +35,7 @@ describe("PianoInstrument", () => {
   test("renders two playable octaves immediately", () => {
     renderInstrument()
 
-    expect(screen.getByRole("heading", { level: 1, name: "webpiano" })).toBeTruthy()
+    expect(screen.getByRole("heading", { level: 1, name: "webpiano Online piano" })).toBeTruthy()
     expect(screen.getByRole("group", { name: "Playable piano" })).toBeTruthy()
     expect(screen.getAllByRole("button", { name: /Play / })).toHaveLength(24)
     expect(screen.getByText("Z–M · lower octave")).toBeTruthy()

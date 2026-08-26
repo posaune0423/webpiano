@@ -1,23 +1,32 @@
-import { describe, expect, spyOn, test } from "bun:test"
+import { describe, expect, test } from "bun:test"
 
-import { createAppEnv } from "@/env"
+function importEnv(appUrl: string) {
+  return Bun.spawnSync({
+    cmd: [
+      process.execPath,
+      "-e",
+      'import { env } from "./src/env.ts"; console.log(env.NEXT_PUBLIC_APP_URL)',
+    ],
+    env: {
+      ...process.env,
+      NEXT_PUBLIC_APP_URL: appUrl,
+    },
+    stderr: "pipe",
+    stdout: "pipe",
+  })
+}
 
 describe("application environment", () => {
   test("accepts the public application URL", () => {
-    const value = createAppEnv({
-      NEXT_PUBLIC_APP_URL: "https://webpiano.xyz",
-    })
+    const result = importEnv("https://webpiano.xyz")
 
-    expect(value.NEXT_PUBLIC_APP_URL).toBe("https://webpiano.xyz")
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout.toString().trim()).toBe("https://webpiano.xyz")
   })
 
   test("rejects a malformed public application URL", () => {
-    const consoleError = spyOn(console, "error").mockImplementation(() => {})
+    const result = importEnv("not-a-url")
 
-    try {
-      expect(() => createAppEnv({ NEXT_PUBLIC_APP_URL: "not-a-url" })).toThrow()
-    } finally {
-      consoleError.mockRestore()
-    }
+    expect(result.exitCode).not.toBe(0)
   })
 })

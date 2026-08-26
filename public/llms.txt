@@ -1,0 +1,20 @@
+# webpiano
+
+> webpiano is a free, browser-based two-octave piano designed for immediate play with a computer keyboard, pointer, or touch. It requires no account, download, or sign-up.
+
+Important notes:
+
+- The main page is the playable instrument.
+- The lower octave uses Z–M and the upper octave uses Q–U, with nearby keys for sharps.
+- Holding Space controls sustain.
+- A second phone can optionally act as a real-time sustain pedal.
+- Played notes and synthesized audio stay in the browser.
+
+## Product
+
+- [Play webpiano](https://webpiano.xyz): Open the playable online piano.
+
+## Policies
+
+- [Privacy Policy](https://webpiano.xyz/privacy): How webpiano handles browser input, temporary pedal sessions, and infrastructure data.
+- [Terms](https://webpiano.xyz/terms): Terms for using webpiano.

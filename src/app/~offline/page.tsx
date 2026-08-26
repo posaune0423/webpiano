@@ -1,4 +1,7 @@
 import { Separator } from "@/components/ui/separator"
+import { OFFLINE_METADATA } from "@/constants/metadata"
+
+export const metadata = OFFLINE_METADATA
 
 export default function OfflinePage() {
   return (

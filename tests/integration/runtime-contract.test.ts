@@ -11,6 +11,29 @@ function read(path: string) {
 }
 
 describe("runtime contract", () => {
+  test("exports one validated environment object", () => {
+    const envSource = read("src/env.ts")
+
+    expect(envSource).toContain("export const env = createEnv({")
+    expect(envSource).not.toContain("createAppEnv")
+  })
+
+  test("keeps metadata settings under constants", () => {
+    expect(read("src/constants/metadata.ts")).toContain("export const HOME_METADATA")
+    expect(read("src/constants/metadata.ts")).toContain("export const APP_VIEWPORT")
+    expect(read("src/utils/json-ld.ts")).toContain("export function serializeJsonLd")
+    expect(() => read("src/lib/seo.ts")).toThrow()
+    expect(() => read("src/lib/json-ld.ts")).toThrow()
+  })
+
+  test("uses the official Next.js Google Analytics integration", () => {
+    const packageJson = JSON.parse(read("package.json")) as {
+      dependencies: Record<string, string>
+    }
+
+    expect(packageJson.dependencies["@next/third-parties"]).toBe("16.3.2")
+  })
+
   test("keeps development on Turbopack and production on webpack", () => {
     const packageJson = JSON.parse(read("package.json")) as {
       scripts: Record<string, string>
