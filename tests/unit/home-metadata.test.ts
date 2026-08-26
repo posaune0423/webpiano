@@ -13,7 +13,7 @@ describe("home metadata", () => {
     expect(existsSync(join(import.meta.dir, "../../src/lib/seo.ts"))).toBeFalse()
     const { APP_VIEWPORT, HOME_METADATA, WEB_APPLICATION_JSON_LD } =
       await import("@/constants/metadata")
-    const { serializeJsonLd } = await import("@/lib/json-ld")
+    const { serializeJsonLd } = await import("@/utils/json-ld")
 
     expect(HOME_METADATA).toMatchObject({
       alternates: { canonical: "/" },

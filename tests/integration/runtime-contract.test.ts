@@ -21,7 +21,9 @@ describe("runtime contract", () => {
   test("keeps metadata settings under constants", () => {
     expect(read("src/constants/metadata.ts")).toContain("export const HOME_METADATA")
     expect(read("src/constants/metadata.ts")).toContain("export const APP_VIEWPORT")
+    expect(read("src/utils/json-ld.ts")).toContain("export function serializeJsonLd")
     expect(() => read("src/lib/seo.ts")).toThrow()
+    expect(() => read("src/lib/json-ld.ts")).toThrow()
   })
 
   test("uses the official Next.js Google Analytics integration", () => {
