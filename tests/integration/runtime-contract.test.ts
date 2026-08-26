@@ -43,12 +43,26 @@ describe("runtime contract", () => {
       dev: "dotenvx run -f .env.development -- next dev --turbopack",
       build: "dotenvx run -f .env.production -- next build --webpack",
       "cf:build": "bun run cf:typegen && opennextjs-cloudflare build",
-      "cf:deploy": "opennextjs-cloudflare deploy",
+      "cf:deploy": "bun scripts/deploy-cloudflare.ts",
       preview: "bun run cf:build && opennextjs-cloudflare preview",
       deploy: "bun run cf:build && bun run cf:deploy",
       check:
         "bun run cf:typegen && bun run format:check && bun run lint && bun run test && bun run typecheck && bun run knip && bun run build",
     })
+  })
+
+  test("publishes a stable Cloudflare preview URL for pull requests", () => {
+    const packageJson = JSON.parse(read("package.json")) as {
+      scripts: Record<string, string>
+    }
+
+    expect(packageJson.scripts["cf:deploy:preview"]).toBe(
+      "bun scripts/deploy-cloudflare-preview.ts",
+    )
+    const workflow = read(".github/workflows/cloudflare-preview.yml")
+    expect(workflow).toContain("pull-requests: write")
+    expect(workflow).toContain("cloudflare-preview-url")
+    expect(workflow).toContain("yamadaasuma.workers.dev")
   })
 
   test("defines the typed public URL for development and production", () => {

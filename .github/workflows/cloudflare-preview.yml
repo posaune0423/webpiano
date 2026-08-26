@@ -1,0 +1,72 @@
+name: Cloudflare PR preview
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: cloudflare-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview-url:
+    name: Cloudflare preview URL
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment:
+      name: cloudflare-preview-${{ github.event.pull_request.number }}
+      url: ${{ steps.preview.outputs.url }}
+    steps:
+      - name: Derive branch preview URL
+        id: preview
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          slug="$(printf '%s' "$HEAD_REF" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' | cut -c1-48 | sed -E 's/-+$//')"
+          if [ -z "$slug" ]; then slug="branch"; fi
+          worker="webpiano-pr-${slug}"
+          url="https://${worker}.yamadaasuma.workers.dev"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for Cloudflare Workers Build
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+        run: |
+          for attempt in $(seq 1 40); do
+            status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$PREVIEW_URL" || true)"
+            if [ "$status" -ge 200 ] 2>/dev/null && [ "$status" -lt 500 ]; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Cloudflare preview did not become ready: $PREVIEW_URL" >&2
+          exit 1
+
+      - name: Publish preview URL on the pull request
+        uses: actions/github-script@v8
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+        with:
+          script: |
+            const marker = "<!-- cloudflare-preview-url -->"
+            const body = `${marker}\n☁️ Cloudflare preview: ${process.env.PREVIEW_URL}`
+            const { owner, repo } = context.repo
+            const issue_number = context.issue.number
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            })
+            const existing = comments.find((comment) =>
+              comment.user?.type === "Bot" && comment.body?.includes(marker),
+            )
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body })
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body })
+            }
