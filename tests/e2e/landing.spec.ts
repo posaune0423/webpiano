@@ -113,6 +113,11 @@ test("opens directly into the responsive playable piano without page overflow", 
   await expect(main.getByRole("status", { name: "Standard range" })).toHaveText("B2–F♯5")
   await main.getByRole("button", { name: "Standard semitone up" }).click()
 
+  await page.keyboard.press("ArrowLeft")
+  await expect(main.getByRole("status", { name: "Standard range" })).toHaveText("B2–F♯5")
+  await page.keyboard.press("ArrowRight")
+  await expect(main.getByRole("status", { name: "Standard range" })).toHaveText("C3–G5")
+
   const c3 = main.getByRole("button", { name: "Play C3 with Z" })
   const cSharp3 = main.getByRole("button", { name: "Play C♯3 with S" })
   const minimumWhiteKeyHeight = testInfo.project.name === "desktop-chromium" ? 500 : 200

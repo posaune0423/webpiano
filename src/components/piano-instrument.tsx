@@ -22,6 +22,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import {
   DEFAULT_LOWER_START_MIDI,
   DEFAULT_UPPER_START_MIDI,
+  FULL_PIANO_MIN_MIDI,
+  MAX_STANDARD_START_MIDI,
   STANDARD_RANGE_NOTE_COUNT,
   createPianoLayout,
   createStandardPianoLayout,
@@ -105,10 +107,14 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
   )
   const activeLayout = instrumentMode === "dual-range" ? dualRangeLayout : standardLayout
   const activeLayoutRef = useRef(activeLayout)
+  const instrumentModeRef = useRef(instrumentMode)
+  const standardStartMidiRef = useRef(standardStartMidi)
 
   useEffect(() => {
     activeLayoutRef.current = activeLayout
-  }, [activeLayout])
+    instrumentModeRef.current = instrumentMode
+    standardStartMidiRef.current = standardStartMidi
+  }, [activeLayout, instrumentMode, standardStartMidi])
 
   const sustainLabel = sustain ? "Sustain on" : "Sustain off — hold Space or use phone pedal"
   const audioLabel =
@@ -202,6 +208,25 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
         if (!event.repeat) {
           event.preventDefault()
           setSustain("keyboard", true)
+        }
+        return
+      }
+
+      if (
+        instrumentModeRef.current === "standard" &&
+        (event.code === "ArrowLeft" || event.code === "ArrowRight")
+      ) {
+        event.preventDefault()
+        const delta = event.code === "ArrowLeft" ? -1 : 1
+        const nextStartMidi = Math.min(
+          MAX_STANDARD_START_MIDI,
+          Math.max(FULL_PIANO_MIN_MIDI, standardStartMidiRef.current + delta),
+        )
+
+        if (nextStartMidi !== standardStartMidiRef.current) {
+          resetInstrument(true, true)
+          standardStartMidiRef.current = nextStartMidi
+          setStandardStartMidi(nextStartMidi)
         }
         return
       }
@@ -309,7 +334,9 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
 
   function handleModeToggle() {
     resetInstrument(true, true)
-    setInstrumentMode((current) => (current === "standard" ? "dual-range" : "standard"))
+    const nextMode = instrumentMode === "standard" ? "dual-range" : "standard"
+    instrumentModeRef.current = nextMode
+    setInstrumentMode(nextMode)
   }
 
   function handleRangeChange(zone: PianoZone, startMidi: number) {
@@ -320,6 +347,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
 
   function handleStandardRangeChange(startMidi: number) {
     resetInstrument(true, true)
+    standardStartMidiRef.current = startMidi
     setStandardStartMidi(startMidi)
   }
 

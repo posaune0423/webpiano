@@ -42,7 +42,7 @@ The base radius is 4px. Panels may use 8px (`rounded-lg`); controls and labels s
   and loading states use matching shadcn Skeleton blocks so content replaces them in place.
 - `/` opens directly into the standard 32-note single keyboard. Dual Range is an explicit opt-in header mode and never replaces the simple first view.
 - Dual Range uses an approximately 8.2:1 A0–C8 navigator with two draggable, semitone-snapped translucent range windows. LOWER exposes 17 bindings (`Z–/`) and UPPER exposes 20 (`Q–]`) in enlarged keyboards below it.
-- The standard first view exposes 32 notes from the same 37 physical bindings, combines overlapping key labels, and moves the complete range one semitone at a time.
+- The standard first view exposes 32 notes from the same 37 physical bindings, combines overlapping key labels, and moves the complete range one semitone at a time through the stepper or global `←` / `→` shortcuts.
 - The instrument uses landscape as the primary phone layout. Portrait shows only a restrained orientation guide; the playable surface is not compressed into portrait.
 - Piano keys are specialized native buttons with visible note/PC-key labels, a physical two-black/three-black pattern, pressed state, pointer capture, and keyboard/assistive activation.
 - “Use phone as pedal” opens a focused shadcn Dialog with a short-lived QR code. After pairing, the Dialog closes so the keyboard remains playable and the header retains the connection control.

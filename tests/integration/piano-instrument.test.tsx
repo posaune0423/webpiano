@@ -124,6 +124,22 @@ describe("PianoInstrument", () => {
     expect(noteOn).toHaveBeenNthCalledWith(2, 78, 0.68)
   })
 
+  test("moves only the standard keyboard with the left and right arrow keys", () => {
+    renderInstrument()
+
+    fireEvent.keyDown(window, { code: "ArrowLeft", key: "ArrowLeft" })
+    expect(screen.getByRole("status", { name: "Standard range" }).textContent).toBe("B2–F♯5")
+
+    fireEvent.keyDown(window, { code: "ArrowRight", key: "ArrowRight" })
+    expect(screen.getByRole("status", { name: "Standard range" }).textContent).toBe("C3–G5")
+
+    fireEvent.click(screen.getByRole("button", { name: "Open Dual Range" }))
+    fireEvent.keyDown(window, { code: "ArrowLeft", key: "ArrowLeft" })
+
+    expect(screen.getByRole("status", { name: "Lower range" }).textContent).toBe("C3–E4")
+    expect(screen.getByRole("status", { name: "Upper range" }).textContent).toBe("C4–G5")
+  })
+
   test("clears sounding notes and sustain before changing the instrument layout", () => {
     renderInstrument()
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
