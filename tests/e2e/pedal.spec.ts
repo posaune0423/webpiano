@@ -40,7 +40,7 @@ test("pairs a phone pedal and applies sustain over WebRTC", async ({ browser, pa
 
     await phone.mouse.up()
     await expect(
-      page.getByRole("status", { name: "Sustain off — hold Space or use phone pedal" }),
+      page.getByRole("status", { name: "Sustain off — press Space or use phone pedal" }),
     ).toBeVisible()
   } finally {
     await phoneContext.close()

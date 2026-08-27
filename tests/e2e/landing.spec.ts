@@ -86,6 +86,7 @@ test("opens directly into the responsive playable piano without page overflow", 
   await expect(piano).toBeVisible()
   await expect(main.getByRole("button", { name: /Play / })).toHaveCount(32)
   await expect(main.getByRole("button", { name: "Pedal" })).toBeVisible()
+  await expect(main.getByRole("button", { name: "Install webpiano" })).toBeVisible()
   await expect(main.getByRole("status", { name: "Standard range" })).toHaveText("C3–G5")
   await expect(main.getByRole("status", { name: /Sustain (on|off)/ })).toBeAttached()
   await expect(main.getByRole("status", { name: "Play a note to start audio" })).toBeAttached()
@@ -289,7 +290,7 @@ test("explains icon-only header controls on hover and focus", async ({ page }, t
 
   const pedal = page.getByRole("button", { name: "Pedal" })
   const sustain = page.getByRole("status", {
-    name: "Sustain off — hold Space or use phone pedal",
+    name: "Sustain off — press Space or use phone pedal",
   })
   const audio = page.getByRole("status", { name: "Play a note to start audio" })
   const singleMode = page.getByRole("button", { name: "Single keyboard" })
@@ -337,15 +338,110 @@ test("opens the pedal menu without shifting the instrument and locks sustain", a
   expect(after).toEqual(before)
 
   await sustainLock.click()
-  await expect(page.getByRole("status", { name: "Sustain on" })).toBeVisible()
+  await expect(page.getByRole("status", { name: "Sustain locked" })).toBeVisible()
   await expect(pedal).toHaveAttribute("data-sustain-active", "true")
+  await expect(pedal).toHaveAttribute("data-sustain-locked", "true")
+  await expect(pedal.locator('[data-pedal-lock="locked"]')).toBeVisible()
   await page.keyboard.down("Space")
   await page.keyboard.up("Space")
-  await expect(page.getByRole("status", { name: "Sustain on" })).toBeVisible()
+  await expect(
+    page.getByRole("status", { name: "Sustain off — press Space or use phone pedal" }),
+  ).toBeVisible()
+  await expect(pedal).toHaveAttribute("data-sustain-locked", "false")
+  await expect(pedal.locator('[data-pedal-lock="unlocked"]')).toBeVisible()
 
   await page.getByRole("button", { name: "Pedal" }).click()
   await page.getByRole("menuitem", { name: /Use phone as pedal/ }).click()
   await expect(page.getByRole("dialog", { name: "Connect your phone" })).toBeVisible()
+})
+
+test("opens a stable install Drawer and runs the browser install prompt", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name === "mobile-portrait-chromium",
+    "Portrait shows only the landscape orientation guide",
+  )
+  await page.goto("/")
+
+  const installTrigger = page.getByRole("button", { name: "Install webpiano" })
+  const installSlot = page.locator("[data-install-state]")
+  const triggerBoxBefore = await installSlot.boundingBox()
+  expect(triggerBoxBefore).not.toBeNull()
+
+  await installTrigger.click()
+  const drawer = page.getByRole("dialog", { name: "Install webpiano" })
+  await expect(drawer).toBeVisible()
+  await expect(drawer.getByText("Use your browser’s install option")).toBeVisible()
+  const installContent = drawer.locator("[data-install-content]")
+  const contentSize = async () => {
+    const box = await installContent.boundingBox()
+    return { height: box?.height ?? 0, width: box?.width ?? 0 }
+  }
+  await expect.poll(async () => (await contentSize()).height).toBe(128)
+  const contentSizeBefore = await contentSize()
+
+  await page.evaluate(() => {
+    const probeWindow = window as Window & { __installPromptCount?: number }
+    probeWindow.__installPromptCount = 0
+    const event = new Event("beforeinstallprompt", { cancelable: true })
+    Object.defineProperty(event, "prompt", {
+      value: async () => {
+        probeWindow.__installPromptCount = (probeWindow.__installPromptCount ?? 0) + 1
+        return { outcome: "accepted", platform: "web" }
+      },
+    })
+    window.dispatchEvent(event)
+  })
+
+  await expect(installSlot).toHaveAttribute("data-install-state", "installable")
+  const triggerBoxAfter = await installSlot.boundingBox()
+  expect(triggerBoxAfter).toEqual(triggerBoxBefore)
+  await expect
+    .poll(async () => (await contentSize()).height)
+    .toBeCloseTo(contentSizeBefore.height, 3)
+  await expect.poll(async () => (await contentSize()).width).toBeCloseTo(contentSizeBefore.width, 3)
+
+  await drawer.getByRole("button", { name: "Install app" }).click()
+  await expect(drawer).toBeHidden()
+  await expect
+    .poll(async () =>
+      page.evaluate(
+        () => (window as Window & { __installPromptCount?: number }).__installPromptCount ?? 0,
+      ),
+    )
+    .toBe(1)
+
+  await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")))
+  await expect(page.getByRole("button", { name: "webpiano is installed" })).toHaveAttribute(
+    "data-install-state",
+    "installed",
+  )
+  expect(await installSlot.boundingBox()).toEqual(triggerBoxBefore)
+})
+
+test("shows Add to Home Screen steps on iPhone and iPad browsers", async ({ page }, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "mobile-landscape-chromium",
+    "The manual mobile install flow is covered in landscape",
+  )
+  await page.addInitScript(() => {
+    Object.defineProperties(navigator, {
+      maxTouchPoints: { configurable: true, get: () => 5 },
+      platform: { configurable: true, get: () => "iPhone" },
+      userAgent: {
+        configurable: true,
+        get: () => "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)",
+      },
+    })
+  })
+  await page.goto("/")
+
+  await page.getByRole("button", { name: "Install webpiano" }).click()
+  const drawer = page.getByRole("dialog", { name: "Install webpiano" })
+  await expect(drawer.getByText("Add to Home Screen")).toBeVisible()
+  await expect(drawer.getByText(/Tap the browser’s/)).toBeVisible()
+  await expect(drawer.getByText("Space toggles Sustain Lock.")).toBeVisible()
 })
 
 test("opens the legal pages from the footer", async ({ page }, testInfo) => {

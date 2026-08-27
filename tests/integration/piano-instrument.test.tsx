@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
 
-import { fireEvent, render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen } from "@testing-library/react"
 
 import { PianoInstrument } from "@/components/piano-instrument"
 import { setPianoAudioEngineForTesting } from "@/lib/piano-audio"
@@ -53,6 +53,7 @@ describe("PianoInstrument", () => {
     const soundToggle = screen.getByRole("button", { name: "Mute sound" })
     expect(soundToggle.getAttribute("aria-pressed")).toBe("false")
     expect(soundToggle.querySelector('[data-sound-icon="on"]')).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Install webpiano" })).toBeTruthy()
     expect(screen.getByRole("figure", { name: "Full piano range from A0 to C8" })).toBeTruthy()
     expect(screen.getByRole("slider", { name: "Move Standard range" })).toBeTruthy()
     expect(screen.queryByRole("slider", { name: "Move Lower range" })).toBeNull()
@@ -61,10 +62,13 @@ describe("PianoInstrument", () => {
     expect(screen.getByText(/32 notes · 37 keys/)).toBeTruthy()
     expect(screen.getByText("Z–/ · lower reach")).toBeTruthy()
     expect(screen.getByText("Q–] · upper reach")).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Pedal" }).dataset.sustainActive).toBe("false")
+    const pedal = screen.getByRole("button", { name: "Pedal" })
+    expect(pedal.dataset.sustainActive).toBe("false")
+    expect(pedal.dataset.sustainLocked).toBe("false")
+    expect(pedal.querySelector('[data-pedal-lock="unlocked"]')).toBeTruthy()
     expect(
       screen.getByRole("status", {
-        name: "Sustain off — hold Space or use phone pedal",
+        name: "Sustain off — press Space or use phone pedal",
       }),
     ).toBeTruthy()
     expect(screen.getByRole("status", { name: "Play a note to start audio" })).toBeTruthy()
@@ -186,7 +190,7 @@ describe("PianoInstrument", () => {
     expect(screen.getByRole("status", { name: "Upper range" }).textContent).toBe("C4–G5")
   })
 
-  test("clears sounding notes and sustain before changing the instrument layout", () => {
+  test("clears sounding notes but preserves an intentional Sustain Lock across layouts", () => {
     renderInstrument()
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
     fireEvent.keyDown(window, { code: "Space", repeat: false })
@@ -195,8 +199,8 @@ describe("PianoInstrument", () => {
 
     expect(allNotesOff).toHaveBeenCalledTimes(1)
     expect(setSustain).toHaveBeenNthCalledWith(1, true)
-    expect(setSustain).toHaveBeenNthCalledWith(2, false)
-    expect(screen.getByRole("status", { name: /Sustain off/ })).toBeTruthy()
+    expect(setSustain).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole("status", { name: "Sustain locked" })).toBeTruthy()
   })
 
   test("reflects sounding notes on the decorative full-piano navigator", () => {
@@ -251,7 +255,7 @@ describe("PianoInstrument", () => {
     expect(noteOff).toHaveBeenCalledWith(48)
   })
 
-  test("plays pointer input and uses Space as the sustain pedal", () => {
+  test("plays pointer input and toggles Sustain Lock with Space", () => {
     renderInstrument()
 
     const key = screen.getByRole("button", { name: "Play C4 with Q · ," })
@@ -260,20 +264,94 @@ describe("PianoInstrument", () => {
     fireEvent.pointerDown(key, { pointerId: 7 })
     fireEvent.pointerUp(key, { pointerId: 7 })
     fireEvent.keyDown(window, { code: "Space", repeat: false })
-    expect(screen.getByRole("status", { name: "Sustain on" })).toBeTruthy()
+    expect(screen.getByRole("status", { name: "Sustain locked" })).toBeTruthy()
     expect(pedal.dataset.sustainActive).toBe("true")
+    expect(pedal.dataset.sustainLocked).toBe("true")
+    expect(pedal.querySelector('[data-pedal-lock="locked"]')).toBeTruthy()
     fireEvent.keyUp(window, { code: "Space" })
+    expect(screen.getByRole("status", { name: "Sustain locked" })).toBeTruthy()
+    expect(pedal.dataset.sustainActive).toBe("true")
+
+    fireEvent.keyDown(window, { code: "Space", repeat: true })
+    expect(screen.getByRole("status", { name: "Sustain locked" })).toBeTruthy()
+
+    fireEvent.keyDown(window, { code: "Space", repeat: false })
     expect(
       screen.getByRole("status", {
-        name: "Sustain off — hold Space or use phone pedal",
+        name: "Sustain off — press Space or use phone pedal",
       }),
     ).toBeTruthy()
     expect(pedal.dataset.sustainActive).toBe("false")
+    expect(pedal.dataset.sustainLocked).toBe("false")
+    expect(pedal.querySelector('[data-pedal-lock="unlocked"]')).toBeTruthy()
 
     expect(noteOn).toHaveBeenCalledWith(60, 0.68)
     expect(noteOff).toHaveBeenCalledWith(60)
     expect(setSustain).toHaveBeenNthCalledWith(1, true)
     expect(setSustain).toHaveBeenNthCalledWith(2, false)
+  })
+
+  test("keeps the pedal menu and Space Sustain Lock state synchronized", async () => {
+    renderInstrument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Pedal" }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /Sustain lock/ }))
+      await Promise.resolve()
+    })
+
+    const pedal = screen.getByRole("button", { name: "Pedal" })
+    expect(pedal.dataset.sustainLocked).toBe("true")
+    expect(screen.getByRole("status", { name: "Sustain locked" })).toBeTruthy()
+
+    fireEvent.keyDown(window, { code: "Space", repeat: false })
+    expect(pedal.dataset.sustainLocked).toBe("false")
+    expect(
+      screen.getByRole("status", { name: "Sustain off — press Space or use phone pedal" }),
+    ).toBeTruthy()
+
+    await act(async () => {
+      fireEvent.click(pedal)
+      await Promise.resolve()
+    })
+    expect(
+      screen.getByRole("menuitemcheckbox", { name: /Sustain lock/ }).getAttribute("aria-checked"),
+    ).toBe("false")
+    await act(async () => {
+      fireEvent.keyDown(document, { key: "Escape" })
+      await Promise.resolve()
+    })
+  })
+
+  test("opens the reserved PWA install Drawer from the header", async () => {
+    renderInstrument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Install webpiano" }))
+
+    const drawer = await screen.findByRole("dialog", { name: "Install webpiano" })
+    expect(drawer.querySelector('[data-slot="drawer-content"]')).toBeTruthy()
+    expect(screen.getByText("Open the piano instantly from your Home Screen.")).toBeTruthy()
+    expect(screen.getByText("Use your browser’s install option")).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Close" })).toBeTruthy()
+  })
+
+  test("runs the captured browser install prompt from the Drawer", async () => {
+    const prompt = mock(async () => ({ outcome: "accepted" as const, platform: "web" }))
+    renderInstrument()
+    const event = new Event("beforeinstallprompt", { cancelable: true })
+    Object.defineProperty(event, "prompt", { value: prompt })
+
+    await act(async () => {
+      window.dispatchEvent(event)
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Install webpiano" }))
+    await act(async () => {
+      fireEvent.click(await screen.findByRole("button", { name: "Install app" }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(prompt).toHaveBeenCalledTimes(1)
   })
 
   test("toggles sound mute state and icon without changing the keyboard mode", () => {

@@ -24,7 +24,7 @@ interface PedalMenuProps {
   sustainLocked: boolean
 }
 
-function PedalIcon({ active = false }: { active?: boolean }) {
+function PedalIcon({ active = false, locked = false }: { active?: boolean; locked?: boolean }) {
   return (
     <svg
       aria-hidden="true"
@@ -40,7 +40,27 @@ function PedalIcon({ active = false }: { active?: boolean }) {
       <rect height="10" rx="1.5" width="6" x="4" y="10" />
       <path d="M17 3v5" />
       <rect height="13" rx="1.5" width="6" x="14" y="7" />
-      <circle cx="21" cy="20" fill={active ? "currentColor" : "none"} r="1.5" />
+      <circle cx="20.5" cy="19.5" fill={active ? "currentColor" : "none"} r="1.25" />
+      <g data-pedal-lock={locked ? "locked" : "unlocked"}>
+        <rect
+          fill={locked ? "currentColor" : "var(--background)"}
+          height="5"
+          rx="1"
+          width="6.5"
+          x="15.75"
+          y="17"
+        />
+        <path
+          d={
+            locked
+              ? "M17.25 17v-1.1a1.75 1.75 0 0 1 3.5 0V17"
+              : "M17.25 17v-1.1a1.75 1.75 0 0 1 3.2-1"
+          }
+        />
+        {locked ? (
+          <circle cx="19" cy="19.5" fill="var(--background)" r="0.5" stroke="none" />
+        ) : null}
+      </g>
     </svg>
   )
 }
@@ -72,6 +92,7 @@ export function PedalMenu({
                     ref={triggerRef}
                     aria-label="Pedal"
                     data-sustain-active={sustainActive}
+                    data-sustain-locked={sustainLocked}
                     size="icon"
                     variant={sustainActive ? "secondary" : "outline"}
                   />
@@ -79,9 +100,11 @@ export function PedalMenu({
               />
             }
           >
-            <PedalIcon active={sustainActive} />
+            <PedalIcon active={sustainActive} locked={sustainLocked} />
           </TooltipTrigger>
-          <TooltipContent>Pedal · Sustain {sustainActive ? "on" : "off"}</TooltipContent>
+          <TooltipContent>
+            Pedal · {sustainLocked ? "Sustain locked" : `Sustain ${sustainActive ? "on" : "off"}`}
+          </TooltipContent>
         </Tooltip>
         <DropdownMenuContent align="end" className="w-72">
           <DropdownMenuGroup>
@@ -96,7 +119,7 @@ export function PedalMenu({
                 closeMenu()
               }}
             >
-              <PedalIcon active={sustainLocked} />
+              <PedalIcon active={sustainLocked} locked={sustainLocked} />
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span>Sustain lock</span>
                 <span className="text-[0.625rem] text-muted-foreground">

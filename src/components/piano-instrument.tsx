@@ -14,6 +14,7 @@ import {
   OrientationGuide,
   StandardPianoView,
 } from "@/components/piano-keyboard-view"
+import { PwaInstallDrawer } from "@/components/pwa-install-drawer"
 import { SiteFooter } from "@/components/site-footer"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -132,6 +133,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
   const noteSources = useRef(new Map<number, Set<string>>())
   const pressedCodes = useRef(new Set<string>())
   const pointerNotes = useRef(new Map<number, number>())
+  const sustainLockedRef = useRef(false)
   const sustainSources = useRef<SustainSources | null>(null)
 
   sustainSources.current ??= new SustainSources((enabled) => {
@@ -159,7 +161,11 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
     standardStartMidiRef.current = standardStartMidi
   }, [activeLayout, instrumentMode, standardStartMidi])
 
-  const sustainLabel = sustain ? "Sustain on" : "Sustain off — hold Space or use phone pedal"
+  const sustainLabel = sustainLocked
+    ? "Sustain locked"
+    : sustain
+      ? "Sustain on"
+      : "Sustain off — press Space or use phone pedal"
   const audioLabel = muted
     ? "Sound muted"
     : audioStatus === "idle"
@@ -226,6 +232,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
         sustainSources.current?.clear("remote-pedal")
       } else {
         sustainSources.current?.clearAll()
+        sustainLockedRef.current = false
         setSustainLocked(false)
       }
     }
@@ -240,6 +247,15 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
     }
   }, [])
 
+  const setManualSustainLock = useCallback(
+    (enabled: boolean) => {
+      sustainLockedRef.current = enabled
+      setSustainLocked(enabled)
+      setSustain("manual-lock", enabled)
+    },
+    [setSustain],
+  )
+
   // Synchronize the instrument with browser-global keyboard and focus events.
   // https://react.dev/learn/you-might-not-need-an-effect#synchronizing-with-external-systems
   useEffect(() => {
@@ -249,9 +265,9 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
       }
 
       if (event.code === "Space") {
+        event.preventDefault()
         if (!event.repeat) {
-          event.preventDefault()
-          setSustain("keyboard", true)
+          setManualSustainLock(!sustainLockedRef.current)
         }
         return
       }
@@ -289,7 +305,6 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
     function handleKeyUp(event: KeyboardEvent) {
       if (event.code === "Space") {
         event.preventDefault()
-        setSustain("keyboard", false)
         return
       }
 
@@ -318,7 +333,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
       resetInstrument(false)
       getPianoAudioEngine().setMuted(false)
     }
-  }, [pressNote, releaseNote, resetInstrument, setSustain])
+  }, [pressNote, releaseNote, resetInstrument, setManualSustainLock])
 
   function handlePointerDown(key: PianoKey, event: ReactPointerEvent<HTMLButtonElement>) {
     event.currentTarget.setPointerCapture(event.pointerId)
@@ -439,8 +454,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
               sustainLocked={sustainLocked}
               onPhonePedalChange={(down) => setSustain("remote-pedal", down)}
               onSustainLockChange={(enabled) => {
-                setSustainLocked(enabled)
-                setSustain("manual-lock", enabled)
+                setManualSustainLock(enabled)
               }}
             />
             <ToggleGroup
@@ -467,6 +481,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
                 <span className="font-mono text-[0.5625rem] tracking-[0.1em] uppercase">Dual</span>
               </ToggleGroupItem>
             </ToggleGroup>
+            <PwaInstallDrawer />
             <output className="sr-only" aria-label={sustainLabel} aria-live="polite" />
             <output className="sr-only" aria-label={audioLabel} aria-live="polite" />
             <SoundToggle muted={muted} onToggle={handleMuteToggle} />
