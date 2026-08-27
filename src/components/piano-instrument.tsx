@@ -1,6 +1,6 @@
 "use client"
 
-import { Volume1, Volume2, VolumeX } from "lucide-react"
+import { Volume2, VolumeX } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
   KeyboardEvent as ReactKeyboardEvent,
@@ -15,9 +15,9 @@ import {
   StandardPianoView,
 } from "@/components/piano-keyboard-view"
 import { SiteFooter } from "@/components/site-footer"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   DEFAULT_LOWER_START_MIDI,
@@ -42,12 +42,6 @@ const VELOCITY = 0.68
 type AudioStatus = "idle" | "on" | "unavailable"
 type InstrumentMode = "dual-range" | "standard"
 
-interface InstrumentStatusProps {
-  children: React.ReactNode
-  label: string
-  variant: "default" | "destructive" | "outline" | "secondary"
-}
-
 function DualRangeIcon() {
   return (
     <svg
@@ -69,20 +63,46 @@ function DualRangeIcon() {
   )
 }
 
-function InstrumentStatus({ children, label, variant }: InstrumentStatusProps) {
+function SingleRangeIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      data-single-range-icon=""
+      data-icon="inline-start"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      viewBox="0 0 24 24"
+    >
+      <rect height="10" rx="1" width="18" x="3" y="7" />
+      <path d="M7 7v10M11 7v10M15 7v10M19 7v10" />
+    </svg>
+  )
+}
+
+function SoundToggle({ muted, onToggle }: { muted: boolean; onToggle: () => void }) {
+  const label = muted ? "Unmute sound" : "Mute sound"
+
   return (
     <Tooltip>
       <TooltipTrigger
         render={
-          <Badge
-            // Icon-only status needs a focus target so keyboard users can open its tooltip.
-            // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-            render={<output aria-label={label} aria-live="polite" tabIndex={0} />}
-            variant={variant}
+          <Button
+            aria-label={label}
+            aria-pressed={muted}
+            size="icon"
+            variant={muted ? "secondary" : "outline"}
+            onClick={onToggle}
           />
         }
       >
-        {children}
+        {muted ? (
+          <VolumeX aria-hidden="true" data-icon="inline-start" data-sound-icon="muted" />
+        ) : (
+          <Volume2 aria-hidden="true" data-icon="inline-start" data-sound-icon="on" />
+        )}
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
@@ -102,6 +122,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
   const [audioStatus, setAudioStatus] = useState<AudioStatus>("idle")
   const [instrumentMode, setInstrumentMode] = useState<InstrumentMode>("standard")
   const [lowerStartMidi, setLowerStartMidi] = useState(DEFAULT_LOWER_START_MIDI)
+  const [muted, setMuted] = useState(false)
   const [standardStartMidi, setStandardStartMidi] = useState(DEFAULT_LOWER_START_MIDI)
   const [sustain, setSustainState] = useState(false)
   const [sustainLocked, setSustainLocked] = useState(false)
@@ -139,8 +160,9 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
   }, [activeLayout, instrumentMode, standardStartMidi])
 
   const sustainLabel = sustain ? "Sustain on" : "Sustain off — hold Space or use phone pedal"
-  const audioLabel =
-    audioStatus === "idle"
+  const audioLabel = muted
+    ? "Sound muted"
+    : audioStatus === "idle"
       ? "Play a note to start audio"
       : audioStatus === "on"
         ? "Sound on"
@@ -294,6 +316,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
       window.removeEventListener("keyup", handleKeyUp)
       window.removeEventListener("blur", handleBlur)
       resetInstrument(false)
+      getPianoAudioEngine().setMuted(false)
     }
   }, [pressNote, releaseNote, resetInstrument, setSustain])
 
@@ -354,11 +377,18 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
     )
   }
 
-  function handleModeToggle() {
+  function handleModeChange(nextMode: InstrumentMode) {
+    if (nextMode === instrumentMode) return
+
     resetInstrument(true, true)
-    const nextMode = instrumentMode === "standard" ? "dual-range" : "standard"
     instrumentModeRef.current = nextMode
     setInstrumentMode(nextMode)
+  }
+
+  function handleMuteToggle() {
+    const nextMuted = !muted
+    getPianoAudioEngine().setMuted(nextMuted)
+    setMuted(nextMuted)
   }
 
   function handleRangeChange(zone: PianoZone, startMidi: number) {
@@ -413,38 +443,33 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
                 setSustain("manual-lock", enabled)
               }}
             />
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    aria-label={
-                      instrumentMode === "dual-range" ? "Close Dual Range" : "Open Dual Range"
-                    }
-                    aria-pressed={instrumentMode === "dual-range"}
-                    size="sm"
-                    variant={instrumentMode === "dual-range" ? "secondary" : "outline"}
-                    onClick={handleModeToggle}
-                  />
+            <ToggleGroup
+              aria-label="Keyboard mode"
+              size="sm"
+              spacing={0}
+              value={[instrumentMode]}
+              variant="outline"
+              onValueChange={(value) => {
+                const nextMode = value.at(-1)
+                if (nextMode === "standard" || nextMode === "dual-range") {
+                  handleModeChange(nextMode)
                 }
-              >
+              }}
+            >
+              <ToggleGroupItem aria-label="Single keyboard" value="standard">
+                <SingleRangeIcon />
+                <span className="font-mono text-[0.5625rem] tracking-[0.1em] uppercase">
+                  Single
+                </span>
+              </ToggleGroupItem>
+              <ToggleGroupItem aria-label="Dual keyboard" value="dual-range">
                 <DualRangeIcon />
                 <span className="font-mono text-[0.5625rem] tracking-[0.1em] uppercase">Dual</span>
-              </TooltipTrigger>
-              <TooltipContent>Play two independent keyboard ranges</TooltipContent>
-            </Tooltip>
+              </ToggleGroupItem>
+            </ToggleGroup>
             <output className="sr-only" aria-label={sustainLabel} aria-live="polite" />
-            <InstrumentStatus
-              label={audioLabel}
-              variant={audioStatus === "unavailable" ? "destructive" : "secondary"}
-            >
-              {audioStatus === "idle" ? (
-                <Volume1 aria-hidden="true" />
-              ) : audioStatus === "on" ? (
-                <Volume2 aria-hidden="true" />
-              ) : (
-                <VolumeX aria-hidden="true" />
-              )}
-            </InstrumentStatus>
+            <output className="sr-only" aria-label={audioLabel} aria-live="polite" />
+            <SoundToggle muted={muted} onToggle={handleMuteToggle} />
           </div>
         </header>
 

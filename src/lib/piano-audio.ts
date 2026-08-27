@@ -2,17 +2,24 @@ import { midiToFrequency } from "./piano"
 
 interface PianoVoice {
   release: () => void
+  setMuted?: (muted: boolean) => void
 }
 
 export interface PianoEngine {
   allNotesOff: () => void
   noteOff: (midi: number) => void
   noteOn: (midi: number, velocity: number) => Promise<void>
+  setMuted: (muted: boolean) => void
   setSustain: (enabled: boolean) => void
 }
 
 type AudioContextFactory = () => AudioContext
-type VoiceFactory = (context: AudioContext, midi: number, velocity: number) => PianoVoice
+type VoiceFactory = (
+  context: AudioContext,
+  midi: number,
+  velocity: number,
+  muted: boolean,
+) => PianoVoice
 
 interface Partial {
   decay: number
@@ -28,7 +35,12 @@ const PARTIALS: Partial[] = [
   { decay: 0.7, gain: 0.035, ratio: 6, type: "sine" },
 ]
 
-function createWebAudioVoice(context: AudioContext, midi: number, velocity: number): PianoVoice {
+function createWebAudioVoice(
+  context: AudioContext,
+  midi: number,
+  velocity: number,
+  muted: boolean,
+): PianoVoice {
   const now = context.currentTime
   const frequency = midiToFrequency(midi)
   const filter = context.createBiquadFilter()
@@ -39,7 +51,7 @@ function createWebAudioVoice(context: AudioContext, midi: number, velocity: numb
   filter.type = "lowpass"
   filter.frequency.setValueAtTime(Math.min(7_000, 3_800 + midi * 32), now)
   filter.Q.setValueAtTime(0.55, now)
-  output.gain.setValueAtTime(0.82, now)
+  output.gain.setValueAtTime(muted ? 0 : 0.82, now)
   output.connect(filter)
   filter.connect(context.destination)
 
@@ -82,12 +94,19 @@ function createWebAudioVoice(context: AudioContext, midi: number, velocity: numb
         oscillator.stop(releaseAt + 0.36)
       }
     },
+    setMuted(muted) {
+      const changeAt = context.currentTime
+      output.gain.cancelScheduledValues(changeAt)
+      output.gain.setValueAtTime(output.gain.value, changeAt)
+      output.gain.linearRampToValueAtTime(muted ? 0 : 0.82, changeAt + 0.008)
+    },
   }
 }
 
 export class SynthPianoEngine implements PianoEngine {
   private readonly attackTokens = new Map<number, number>()
   private context: AudioContext | undefined
+  private muted = false
   private nextAttackToken = 0
   private readonly pressedNotes = new Set<number>()
   private sustain = false
@@ -121,7 +140,8 @@ export class SynthPianoEngine implements PianoEngine {
     }
 
     this.voices.get(midi)?.release()
-    this.voices.set(midi, this.voiceFactory(context, midi, velocity))
+    const voice = this.voiceFactory(context, midi, velocity, this.muted)
+    this.voices.set(midi, voice)
   }
 
   noteOff(midi: number): void {
@@ -162,6 +182,13 @@ export class SynthPianoEngine implements PianoEngine {
     }
 
     this.sustainedNotes.clear()
+  }
+
+  setMuted(muted: boolean): void {
+    if (this.muted === muted) return
+
+    this.muted = muted
+    for (const voice of this.voices.values()) voice.setMuted?.(muted)
   }
 
   private releaseNote(midi: number): void {

@@ -17,7 +17,7 @@ describe("SynthPianoEngine", () => {
     await engine.noteOn(60, 0.68)
 
     expect(resume).toHaveBeenCalledTimes(1)
-    expect(createVoice).toHaveBeenCalledWith(context, 60, 0.68)
+    expect(createVoice).toHaveBeenCalledWith(context, 60, 0.68, false)
   })
 
   test("defers note release until sustain is lifted", async () => {
@@ -91,7 +91,7 @@ describe("SynthPianoEngine", () => {
     await secondAttack
 
     expect(createVoice).toHaveBeenCalledTimes(1)
-    expect(createVoice).toHaveBeenCalledWith(context, 60, 0.8)
+    expect(createVoice).toHaveBeenCalledWith(context, 60, 0.8, false)
   })
 
   test("allNotesOff releases sustained and pressed voices", async () => {
@@ -112,5 +112,30 @@ describe("SynthPianoEngine", () => {
     engine.allNotesOff()
 
     expect(release).toHaveBeenCalledTimes(1)
+  })
+
+  test("mutes existing and future voices until sound is restored", async () => {
+    const setMuted = mock((_muted: boolean) => {})
+    const context = {
+      currentTime: 6,
+      resume: async () => {},
+      state: "running",
+    } as unknown as AudioContext
+    const createVoice = mock(
+      (_context: AudioContext, _midi: number, _velocity: number, _muted: boolean) => ({
+        release: () => {},
+        setMuted,
+      }),
+    )
+    const engine = new SynthPianoEngine(() => context, createVoice)
+
+    await engine.noteOn(60, 0.68)
+    engine.setMuted(true)
+    await engine.noteOn(64, 0.68)
+    engine.setMuted(false)
+
+    expect(createVoice).toHaveBeenNthCalledWith(1, context, 60, 0.68, false)
+    expect(createVoice).toHaveBeenNthCalledWith(2, context, 64, 0.68, true)
+    expect(setMuted.mock.calls).toEqual([[true], [false], [false]])
   })
 })

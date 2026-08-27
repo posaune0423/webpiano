@@ -88,7 +88,20 @@ test("opens directly into the responsive playable piano without page overflow", 
   await expect(main.getByRole("button", { name: "Pedal" })).toBeVisible()
   await expect(main.getByRole("status", { name: "Standard range" })).toHaveText("C3–G5")
   await expect(main.getByRole("status", { name: /Sustain (on|off)/ })).toBeAttached()
-  await expect(main.getByRole("status", { name: "Play a note to start audio" })).toBeVisible()
+  await expect(main.getByRole("status", { name: "Play a note to start audio" })).toBeAttached()
+  await expect(main.getByRole("group", { name: "Keyboard mode" })).toBeVisible()
+  await expect(main.getByRole("button", { name: "Single keyboard" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
+  await expect(main.getByRole("button", { name: "Dual keyboard" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  )
+  await expect(main.getByRole("button", { name: "Mute sound" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  )
   const navigator = main.getByRole("figure", { name: "Full piano range from A0 to C8" })
   await expect(navigator).toBeVisible()
   await expect(main.getByRole("slider", { name: "Move Standard range" })).toBeVisible()
@@ -160,7 +173,7 @@ test("opens directly into the responsive playable piano without page overflow", 
 
   await page.keyboard.down("z")
   await expect(c3).toHaveAttribute("aria-pressed", "true")
-  await expect(main.getByRole("status", { name: "Sound on" })).toBeVisible()
+  await expect(main.getByRole("status", { name: "Sound on" })).toBeAttached()
   await page.keyboard.up("z")
   await expect(c3).toHaveAttribute("aria-pressed", "false")
 
@@ -194,15 +207,22 @@ test("shares one 88-key navigator between Standard and Dual Range", async ({ pag
   const navigator = main.getByRole("figure", { name: "Full piano range from A0 to C8" })
   await expect(navigator).toBeVisible()
   await expect(main.getByRole("slider", { name: "Move Standard range" })).toBeVisible()
-  await expect(main.getByRole("button", { name: "Open Dual Range" })).toContainText("Dual")
+  await expect(main.getByRole("button", { name: "Single keyboard" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
 
-  await main.getByRole("button", { name: "Open Dual Range" }).click()
+  await main.getByRole("button", { name: "Dual keyboard" }).click()
 
   await expect(navigator).toBeVisible()
   await expect(navigator).toHaveCount(1)
   await expect(main.getByRole("slider", { name: "Move Standard range" })).toHaveCount(0)
   await expect(main.getByRole("slider", { name: "Move Lower range" })).toBeVisible()
   await expect(main.getByRole("slider", { name: "Move Upper range" })).toBeVisible()
+  await expect(main.getByRole("button", { name: "Dual keyboard" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
   const lowerPiano = main.getByRole("group", { name: "Lower playable piano" })
   const upperPiano = main.getByRole("group", { name: "Upper playable piano" })
   await expect(lowerPiano).toBeVisible()
@@ -254,7 +274,7 @@ test("shares one 88-key navigator between Standard and Dual Range", async ({ pag
     .poll(async () => Number(await lowerRange.getAttribute("aria-valuenow")))
     .toBeLessThan(startMidi)
 
-  await main.getByRole("button", { name: "Close Dual Range" }).click()
+  await main.getByRole("button", { name: "Single keyboard" }).click()
   await expect(main.getByRole("group", { name: "Playable piano" })).toBeVisible()
   await expect(navigator).toBeVisible()
   await expect(main.getByRole("slider", { name: "Move Standard range" })).toBeVisible()
@@ -272,26 +292,27 @@ test("explains icon-only header controls on hover and focus", async ({ page }, t
     name: "Sustain off — hold Space or use phone pedal",
   })
   const audio = page.getByRole("status", { name: "Play a note to start audio" })
-  const dualRange = page.getByRole("button", { name: "Open Dual Range" })
-  await expect(dualRange).toContainText("Dual")
-  await expect(dualRange.locator("[data-dual-range-icon]")).toBeVisible()
+  const singleMode = page.getByRole("button", { name: "Single keyboard" })
+  const dualMode = page.getByRole("button", { name: "Dual keyboard" })
+  const soundToggle = page.getByRole("button", { name: "Mute sound" })
+  await expect(singleMode.locator("[data-single-range-icon]")).toBeVisible()
+  await expect(dualMode.locator("[data-dual-range-icon]")).toBeVisible()
 
   await pedal.hover()
   await expect(page.locator('[data-slot="tooltip-content"]', { hasText: "Pedal" })).toBeVisible()
 
   await expect(sustain).toBeAttached()
 
-  await audio.focus()
+  await expect(audio).toBeAttached()
+  await soundToggle.hover()
   await expect(
-    page.locator('[data-slot="tooltip-content"]', { hasText: "Play a note to start audio" }),
+    page.locator('[data-slot="tooltip-content"]', { hasText: "Mute sound" }),
   ).toBeVisible()
 
-  await dualRange.hover()
-  await expect(
-    page.locator('[data-slot="tooltip-content"]', {
-      hasText: "Play two independent keyboard ranges",
-    }),
-  ).toBeVisible()
+  await soundToggle.click()
+  const unmute = page.getByRole("button", { name: "Unmute sound" })
+  await expect(unmute).toHaveAttribute("aria-pressed", "true")
+  await expect(unmute.locator('[data-sound-icon="muted"]')).toBeVisible()
 })
 
 test("opens the pedal menu without shifting the instrument and locks sustain", async ({

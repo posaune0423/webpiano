@@ -8,6 +8,7 @@ import { PedalApiProvider } from "@/trpc/client"
 
 const noteOn = mock(async () => {})
 const noteOff = mock(() => {})
+const setMuted = mock((_muted: boolean) => {})
 const setSustain = mock(() => {})
 const allNotesOff = mock(() => {})
 
@@ -23,9 +24,10 @@ describe("PianoInstrument", () => {
   beforeEach(() => {
     noteOn.mockClear()
     noteOff.mockClear()
+    setMuted.mockClear()
     setSustain.mockClear()
     allNotesOff.mockClear()
-    setPianoAudioEngineForTesting({ allNotesOff, noteOff, noteOn, setSustain })
+    setPianoAudioEngineForTesting({ allNotesOff, noteOff, noteOn, setMuted, setSustain })
   })
 
   afterEach(() => {
@@ -41,9 +43,16 @@ describe("PianoInstrument", () => {
     expect(screen.getByRole("status", { name: "Standard range" }).textContent).toBe("C3–G5")
     expect(screen.getByRole("button", { name: "Standard semitone down" })).toBeTruthy()
     expect(screen.getByRole("button", { name: "Standard semitone up" })).toBeTruthy()
-    const dualRangeButton = screen.getByRole("button", { name: "Open Dual Range" })
-    expect(dualRangeButton.textContent).toContain("Dual")
-    expect(dualRangeButton.querySelector("[data-dual-range-icon]")).toBeTruthy()
+    expect(screen.getByRole("group", { name: "Keyboard mode" })).toBeTruthy()
+    const singleMode = screen.getByRole("button", { name: "Single keyboard" })
+    const dualMode = screen.getByRole("button", { name: "Dual keyboard" })
+    expect(singleMode.getAttribute("aria-pressed")).toBe("true")
+    expect(dualMode.getAttribute("aria-pressed")).toBe("false")
+    expect(singleMode.querySelector("[data-single-range-icon]")).toBeTruthy()
+    expect(dualMode.querySelector("[data-dual-range-icon]")).toBeTruthy()
+    const soundToggle = screen.getByRole("button", { name: "Mute sound" })
+    expect(soundToggle.getAttribute("aria-pressed")).toBe("false")
+    expect(soundToggle.querySelector('[data-sound-icon="on"]')).toBeTruthy()
     expect(screen.getByRole("figure", { name: "Full piano range from A0 to C8" })).toBeTruthy()
     expect(screen.getByRole("slider", { name: "Move Standard range" })).toBeTruthy()
     expect(screen.queryByRole("slider", { name: "Move Lower range" })).toBeNull()
@@ -70,9 +79,14 @@ describe("PianoInstrument", () => {
   test("opens two independent semitone ranges and keeps their settings during the session", () => {
     renderInstrument()
 
-    fireEvent.click(screen.getByRole("button", { name: "Open Dual Range" }))
+    fireEvent.click(screen.getByRole("button", { name: "Dual keyboard" }))
 
-    expect(screen.getByRole("button", { name: "Close Dual Range" }).textContent).toContain("Dual")
+    expect(
+      screen.getByRole("button", { name: "Single keyboard" }).getAttribute("aria-pressed"),
+    ).toBe("false")
+    expect(screen.getByRole("button", { name: "Dual keyboard" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    )
     expect(screen.getAllByRole("figure", { name: "Full piano range from A0 to C8" })).toHaveLength(
       1,
     )
@@ -94,13 +108,13 @@ describe("PianoInstrument", () => {
     expect(noteOn).toHaveBeenNthCalledWith(1, 47, 0.68)
     expect(noteOn).toHaveBeenNthCalledWith(2, 61, 0.68)
 
-    fireEvent.click(screen.getByRole("button", { name: "Close Dual Range" }))
+    fireEvent.click(screen.getByRole("button", { name: "Single keyboard" }))
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
     fireEvent.keyUp(window, { code: "KeyZ" })
 
     expect(noteOn).toHaveBeenNthCalledWith(3, 48, 0.68)
 
-    fireEvent.click(screen.getByRole("button", { name: "Open Dual Range" }))
+    fireEvent.click(screen.getByRole("button", { name: "Dual keyboard" }))
     expect(screen.getByRole("status", { name: "Lower range" }).textContent).toBe("B2–D♯4")
     expect(screen.getByRole("status", { name: "Upper range" }).textContent).toBe("C♯4–G♯5")
   })
@@ -127,7 +141,7 @@ describe("PianoInstrument", () => {
 
   test("bounds both ranges inside the full 88-key piano", () => {
     renderInstrument()
-    fireEvent.click(screen.getByRole("button", { name: "Open Dual Range" }))
+    fireEvent.click(screen.getByRole("button", { name: "Dual keyboard" }))
 
     const lowerDown = screen.getByRole("button", { name: "Lower semitone down" })
     const upperUp = screen.getByRole("button", { name: "Upper semitone up" })
@@ -165,7 +179,7 @@ describe("PianoInstrument", () => {
     fireEvent.keyDown(window, { code: "ArrowRight", key: "ArrowRight" })
     expect(screen.getByRole("status", { name: "Standard range" }).textContent).toBe("C3–G5")
 
-    fireEvent.click(screen.getByRole("button", { name: "Open Dual Range" }))
+    fireEvent.click(screen.getByRole("button", { name: "Dual keyboard" }))
     fireEvent.keyDown(window, { code: "ArrowLeft", key: "ArrowLeft" })
 
     expect(screen.getByRole("status", { name: "Lower range" }).textContent).toBe("C3–E4")
@@ -177,7 +191,7 @@ describe("PianoInstrument", () => {
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
     fireEvent.keyDown(window, { code: "Space", repeat: false })
 
-    fireEvent.click(screen.getByRole("button", { name: "Open Dual Range" }))
+    fireEvent.click(screen.getByRole("button", { name: "Dual keyboard" }))
 
     expect(allNotesOff).toHaveBeenCalledTimes(1)
     expect(setSustain).toHaveBeenNthCalledWith(1, true)
@@ -200,7 +214,7 @@ describe("PianoInstrument", () => {
 
   test("drags a range by semitone and commits only when released", () => {
     renderInstrument()
-    fireEvent.click(screen.getByRole("button", { name: "Open Dual Range" }))
+    fireEvent.click(screen.getByRole("button", { name: "Dual keyboard" }))
 
     const navigator = screen.getByRole("figure", { name: "Full piano range from A0 to C8" })
     const lowerRange = screen.getByRole("slider", { name: "Move Lower range" })
@@ -260,6 +274,28 @@ describe("PianoInstrument", () => {
     expect(noteOff).toHaveBeenCalledWith(60)
     expect(setSustain).toHaveBeenNthCalledWith(1, true)
     expect(setSustain).toHaveBeenNthCalledWith(2, false)
+  })
+
+  test("toggles sound mute state and icon without changing the keyboard mode", () => {
+    renderInstrument()
+
+    const mute = screen.getByRole("button", { name: "Mute sound" })
+    fireEvent.click(mute)
+
+    const unmute = screen.getByRole("button", { name: "Unmute sound" })
+    expect(unmute.getAttribute("aria-pressed")).toBe("true")
+    expect(unmute.querySelector('[data-sound-icon="muted"]')).toBeTruthy()
+    expect(setMuted).toHaveBeenNthCalledWith(1, true)
+    expect(
+      screen.getByRole("button", { name: "Single keyboard" }).getAttribute("aria-pressed"),
+    ).toBe("true")
+
+    fireEvent.click(unmute)
+
+    expect(screen.getByRole("button", { name: "Mute sound" }).getAttribute("aria-pressed")).toBe(
+      "false",
+    )
+    expect(setMuted).toHaveBeenNthCalledWith(2, false)
   })
 
   test("releases held notes when the window loses focus", () => {

@@ -49,7 +49,7 @@ The base radius is 4px. Panels may use 8px (`rounded-lg`); controls and labels s
 - Piano keys are specialized native buttons with visible note/PC-key labels, a physical two-black/three-black pattern, pressed state, pointer capture, and keyboard/assistive activation.
 - “Use phone as pedal” opens a focused shadcn Dialog with a short-lived QR code. After pairing, the Dialog closes so the keyboard remains playable and the header retains the connection control.
 - The pedal icon opens one menu containing the manual sustain lock and “Use phone as pedal”. The QR dialog keeps one fixed-height session slot across creating, waiting, failure, and connected states.
-- Header controls keep one clear responsibility each: the pedal icon owns sustain state, the custom stacked-keyboard icon plus visible `DUAL` label toggles Dual Range, and the speaker icon reports audio state. The former standalone keyboard-shaped sustain status remains available only to assistive technology.
+- Header controls keep one clear responsibility each: the pedal icon owns sustain state, an explicit `SINGLE | DUAL` ToggleGroup selects keyboard mode, and the speaker button toggles Mute/Unmute with `Volume2`/`VolumeX`. Sustain and audio-engine status remain available to assistive technology without duplicate visual badges.
 - `/pedal/[sessionId]` is a dedicated full-screen controller: small diagnostic connection copy above one large metal pedal rendered with semantic-token SVG/CSS. It has no piano keyboard or marketing content.
 
 ## Wireframes
@@ -60,6 +60,7 @@ The base radius is 4px. Panels may use 8px (`rounded-lg`); controls and labels s
 - The range-label comparison is recorded in `standard-range-label-natural-desktop.png`, `standard-range-label-sharp-current-desktop.png`, and the fixed-slot `standard-range-label-fixed-*-desktop.png` pair.
 - The combined note/binding count is recorded in `standard-range-summary-counts-desktop.png`.
 - The approved shared navigator and icon system are recorded in `unified-88-navigator-standard-desktop.png`, `unified-88-navigator-dual-desktop.png`, their mobile landscape counterparts, and `header-icons-labeled-dual-desktop.png`.
+- The explicit mode and sound toggle states are recorded in `header-mode-sound-toggles-single.png`, `header-mode-sound-toggles-dual-muted.png`, and the mobile header variant.
 
 ## Motion
 
