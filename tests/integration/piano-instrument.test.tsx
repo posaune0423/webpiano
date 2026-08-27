@@ -41,12 +41,18 @@ describe("PianoInstrument", () => {
     expect(screen.getByRole("status", { name: "Standard range" }).textContent).toBe("C3–G5")
     expect(screen.getByRole("button", { name: "Standard semitone down" })).toBeTruthy()
     expect(screen.getByRole("button", { name: "Standard semitone up" })).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Open Dual Range" })).toBeTruthy()
-    expect(screen.queryByRole("figure", { name: "Full piano range from A0 to C8" })).toBeNull()
+    const dualRangeButton = screen.getByRole("button", { name: "Open Dual Range" })
+    expect(dualRangeButton.textContent).toContain("Dual")
+    expect(dualRangeButton.querySelector("[data-dual-range-icon]")).toBeTruthy()
+    expect(screen.getByRole("figure", { name: "Full piano range from A0 to C8" })).toBeTruthy()
+    expect(screen.getByRole("slider", { name: "Move Standard range" })).toBeTruthy()
+    expect(screen.queryByRole("slider", { name: "Move Lower range" })).toBeNull()
+    expect(screen.queryByRole("slider", { name: "Move Upper range" })).toBeNull()
+    expect(screen.getByText("A0 — C8 · 88-key piano")).toBeTruthy()
     expect(screen.getByText(/32 notes · 37 keys/)).toBeTruthy()
     expect(screen.getByText("Z–/ · lower reach")).toBeTruthy()
     expect(screen.getByText("Q–] · upper reach")).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Pedal" }).textContent).toBe("")
+    expect(screen.getByRole("button", { name: "Pedal" }).dataset.sustainActive).toBe("false")
     expect(
       screen.getByRole("status", {
         name: "Sustain off — hold Space or use phone pedal",
@@ -66,8 +72,13 @@ describe("PianoInstrument", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Open Dual Range" }))
 
-    expect(screen.getByRole("button", { name: "Close Dual Range" })).toBeTruthy()
-    expect(screen.getByRole("figure", { name: "Full piano range from A0 to C8" })).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Close Dual Range" }).textContent).toContain("Dual")
+    expect(screen.getAllByRole("figure", { name: "Full piano range from A0 to C8" })).toHaveLength(
+      1,
+    )
+    expect(screen.queryByRole("slider", { name: "Move Standard range" })).toBeNull()
+    expect(screen.getByRole("slider", { name: "Move Lower range" })).toBeTruthy()
+    expect(screen.getByRole("slider", { name: "Move Upper range" })).toBeTruthy()
     expect(screen.getByRole("group", { name: "Lower playable piano" })).toBeTruthy()
     expect(screen.getByRole("group", { name: "Upper playable piano" })).toBeTruthy()
     expect(screen.getAllByRole("button", { name: /Play / })).toHaveLength(37)
@@ -92,6 +103,26 @@ describe("PianoInstrument", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open Dual Range" }))
     expect(screen.getByRole("status", { name: "Lower range" }).textContent).toBe("B2–D♯4")
     expect(screen.getByRole("status", { name: "Upper range" }).textContent).toBe("C♯4–G♯5")
+  })
+
+  test("drags the standard gauge across the shared 88-key navigator", () => {
+    renderInstrument()
+
+    const navigator = screen.getByRole("figure", { name: "Full piano range from A0 to C8" })
+    const standardRange = screen.getByRole("slider", { name: "Move Standard range" })
+    navigator.getBoundingClientRect = () => new DOMRect(0, 0, 1000, 120)
+
+    fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
+    fireEvent.pointerDown(standardRange, { clientX: 317, pointerId: 12 })
+    fireEvent.pointerMove(standardRange, { clientX: 250, pointerId: 12 })
+
+    expect(screen.getByRole("status", { name: "Standard range" }).textContent).toBe("C3–G5")
+    expect(standardRange.getAttribute("aria-valuetext")).toBe("Standard range F♯2–C♯5")
+
+    fireEvent.pointerUp(standardRange, { clientX: 250, pointerId: 12 })
+
+    expect(screen.getByRole("status", { name: "Standard range" }).textContent).toBe("F♯2–C♯5")
+    expect(allNotesOff).toHaveBeenCalledTimes(1)
   })
 
   test("bounds both ranges inside the full 88-key piano", () => {
@@ -156,7 +187,6 @@ describe("PianoInstrument", () => {
 
   test("reflects sounding notes on the decorative full-piano navigator", () => {
     renderInstrument()
-    fireEvent.click(screen.getByRole("button", { name: "Open Dual Range" }))
 
     const navigator = screen.getByRole("figure", { name: "Full piano range from A0 to C8" })
     const c3 = navigator.querySelector('[data-midi="48"]')
@@ -211,16 +241,20 @@ describe("PianoInstrument", () => {
     renderInstrument()
 
     const key = screen.getByRole("button", { name: "Play C4 with Q · ," })
+    const pedal = screen.getByRole("button", { name: "Pedal" })
+    expect(pedal.dataset.sustainActive).toBe("false")
     fireEvent.pointerDown(key, { pointerId: 7 })
     fireEvent.pointerUp(key, { pointerId: 7 })
     fireEvent.keyDown(window, { code: "Space", repeat: false })
     expect(screen.getByRole("status", { name: "Sustain on" })).toBeTruthy()
+    expect(pedal.dataset.sustainActive).toBe("true")
     fireEvent.keyUp(window, { code: "Space" })
     expect(
       screen.getByRole("status", {
         name: "Sustain off — hold Space or use phone pedal",
       }),
     ).toBeTruthy()
+    expect(pedal.dataset.sustainActive).toBe("false")
 
     expect(noteOn).toHaveBeenCalledWith(60, 0.68)
     expect(noteOff).toHaveBeenCalledWith(60)

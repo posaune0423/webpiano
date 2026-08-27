@@ -45,6 +45,15 @@ interface DualRangeViewProps extends Omit<PianoKeyboardProps, "keys" | "label" |
   upperStartMidi: number
 }
 
+type PianoRangeId = PianoZone | "standard"
+
+interface NavigatorRange {
+  id: PianoRangeId
+  maximumStartMidi: number
+  noteCount: number
+  startMidi: number
+}
+
 function PianoKeyboard({
   activeNotes,
   keys,
@@ -117,7 +126,7 @@ function PianoKeyboard({
       className={cn(
         "overflow-hidden rounded-md border border-border bg-lacquer p-0",
         variant === "standard"
-          ? "min-h-[23rem] min-w-[52rem] flex-1 [@media(max-height:500px)]:min-h-[14rem]"
+          ? "min-h-[20rem] min-w-[52rem] flex-1 [@media(max-height:500px)]:min-h-[12rem]"
           : "min-h-0 min-w-0",
       )}
     >
@@ -126,7 +135,7 @@ function PianoKeyboard({
         className={cn(
           "relative h-full",
           variant === "standard"
-            ? "min-h-[23rem] [@media(max-height:500px)]:min-h-[14rem]"
+            ? "min-h-[20rem] [@media(max-height:500px)]:min-h-[12rem]"
             : "min-h-0",
         )}
       >
@@ -184,20 +193,18 @@ function RangeStepper({
 
 function FullPianoNavigator({
   activeNotes,
-  lowerStartMidi,
   onRangeChange,
-  upperStartMidi,
+  ranges,
 }: {
   activeNotes: ReadonlySet<number>
-  lowerStartMidi: number
-  onRangeChange: (zone: PianoZone, startMidi: number) => void
-  upperStartMidi: number
+  onRangeChange: (range: PianoRangeId, startMidi: number) => void
+  ranges: NavigatorRange[]
 }) {
   const [drag, setDrag] = useState<{
     offsetMidi: number
     pointerId: number
     previewStartMidi: number
-    zone: PianoZone
+    range: PianoRangeId
   }>()
   const figureRef = useRef<HTMLElement>(null)
   const whiteKeys = FULL_PIANO_KEYS.filter((key) => !key.isBlack)
@@ -223,7 +230,7 @@ function FullPianoNavigator({
   }
 
   function beginDrag(
-    zone: PianoZone,
+    range: PianoRangeId,
     startMidi: number,
     event: ReactPointerEvent<HTMLInputElement>,
   ) {
@@ -233,14 +240,15 @@ function FullPianoNavigator({
       offsetMidi: midiAtPointer(event.clientX) - startMidi,
       pointerId: event.pointerId,
       previewStartMidi: startMidi,
-      zone,
+      range,
     })
   }
 
   function moveDrag(event: ReactPointerEvent<HTMLInputElement>) {
     if (!drag || drag.pointerId !== event.pointerId) return
 
-    const maximumStart = drag.zone === "lower" ? MAX_LOWER_START_MIDI : MAX_UPPER_START_MIDI
+    const maximumStart =
+      ranges.find((range) => range.id === drag.range)?.maximumStartMidi ?? FULL_PIANO_MIN_MIDI
     const previewStartMidi = Math.min(
       maximumStart,
       Math.max(FULL_PIANO_MIN_MIDI, midiAtPointer(event.clientX) - drag.offsetMidi),
@@ -251,8 +259,10 @@ function FullPianoNavigator({
   function finishDrag(event: ReactPointerEvent<HTMLInputElement>) {
     if (!drag || drag.pointerId !== event.pointerId) return
 
-    if (drag.previewStartMidi !== (drag.zone === "lower" ? lowerStartMidi : upperStartMidi)) {
-      onRangeChange(drag.zone, drag.previewStartMidi)
+    const committedStartMidi = ranges.find((range) => range.id === drag.range)?.startMidi
+
+    if (committedStartMidi !== undefined && drag.previewStartMidi !== committedStartMidi) {
+      onRangeChange(drag.range, drag.previewStartMidi)
     }
     setDrag(undefined)
   }
@@ -261,79 +271,75 @@ function FullPianoNavigator({
     if (drag?.pointerId === event.pointerId) setDrag(undefined)
   }
 
-  function handleRangeKeyDown(
-    zone: PianoZone,
-    startMidi: number,
-    event: ReactKeyboardEvent<HTMLInputElement>,
-  ) {
-    const maximumStart = zone === "lower" ? MAX_LOWER_START_MIDI : MAX_UPPER_START_MIDI
+  function handleRangeKeyDown(range: NavigatorRange, event: ReactKeyboardEvent<HTMLInputElement>) {
     const nextStart =
       event.key === "ArrowLeft"
-        ? Math.max(FULL_PIANO_MIN_MIDI, startMidi - 1)
+        ? Math.max(FULL_PIANO_MIN_MIDI, range.startMidi - 1)
         : event.key === "ArrowRight"
-          ? Math.min(maximumStart, startMidi + 1)
+          ? Math.min(range.maximumStartMidi, range.startMidi + 1)
           : event.key === "Home"
             ? FULL_PIANO_MIN_MIDI
             : event.key === "End"
-              ? maximumStart
+              ? range.maximumStartMidi
               : undefined
 
-    if (nextStart === undefined || nextStart === startMidi) return
+    if (nextStart === undefined || nextStart === range.startMidi) return
 
     event.preventDefault()
-    onRangeChange(zone, nextStart)
+    onRangeChange(range.id, nextStart)
   }
 
-  function renderRange(zone: PianoZone, committedStartMidi: number, noteCount: number) {
-    const isDragging = drag?.zone === zone
-    const startMidi = isDragging ? drag.previewStartMidi : committedStartMidi
-    const maximumStart = zone === "lower" ? MAX_LOWER_START_MIDI : MAX_UPPER_START_MIDI
-    const zoneLabel = zone === "lower" ? "Lower" : "Upper"
+  function renderRange(range: NavigatorRange) {
+    const isDragging = drag?.range === range.id
+    const startMidi = isDragging ? drag.previewStartMidi : range.startMidi
+    const rangeLabel =
+      range.id === "standard" ? "Standard" : range.id === "lower" ? "Lower" : "Upper"
 
     return (
       <div
+        key={range.id}
         className={cn(
           "absolute inset-y-1 z-[3] border bg-background/15 text-left shadow-inner select-none data-[dragging=true]:bg-background/25",
-          zone === "lower" ? "border-brass" : "border-muted-foreground",
+          range.id === "upper" ? "border-muted-foreground" : "border-brass",
         )}
         data-dragging={isDragging}
-        style={rangeStyle(startMidi, noteCount)}
+        style={rangeStyle(startMidi, range.noteCount)}
       >
         <input
           readOnly
           type="range"
-          aria-label={`Move ${zoneLabel} range`}
-          aria-valuemax={maximumStart}
+          aria-label={`Move ${rangeLabel} range`}
+          aria-valuemax={range.maximumStartMidi}
           aria-valuemin={FULL_PIANO_MIN_MIDI}
           aria-valuenow={startMidi}
-          aria-valuetext={`${zoneLabel} range ${formatPianoRange(startMidi, noteCount)}`}
+          aria-valuetext={`${rangeLabel} range ${formatPianoRange(startMidi, range.noteCount)}`}
           className="absolute inset-0 z-10 size-full cursor-grab touch-none appearance-none opacity-0 active:cursor-grabbing"
           data-dragging={isDragging}
           data-start-midi={startMidi}
-          data-zone={zone}
-          max={maximumStart}
+          data-zone={range.id}
+          max={range.maximumStartMidi}
           min={FULL_PIANO_MIN_MIDI}
           value={startMidi}
-          onKeyDown={(event) => handleRangeKeyDown(zone, committedStartMidi, event)}
+          onKeyDown={(event) => handleRangeKeyDown(range, event)}
           onPointerCancel={cancelDrag}
-          onPointerDown={(event) => beginDrag(zone, committedStartMidi, event)}
+          onPointerDown={(event) => beginDrag(range.id, range.startMidi, event)}
           onPointerMove={moveDrag}
           onPointerUp={finishDrag}
         />
         <span
           className={cn(
             "absolute left-1 flex items-center gap-1 border border-border bg-lacquer/95 px-1.5 py-1 font-mono text-[0.5rem] tracking-[0.06em] text-ivory uppercase",
-            zone === "lower" ? "top-1" : "bottom-1",
+            range.id === "upper" ? "bottom-1" : "top-1",
           )}
         >
           <span aria-hidden="true" className="tracking-[-0.08em] text-muted-foreground">
             ⠿
           </span>
-          {zoneLabel} · {formatPianoRange(startMidi, noteCount)}
+          {rangeLabel} · {formatPianoRange(startMidi, range.noteCount)}
         </span>
         {isDragging ? (
           <span className="absolute top-1/2 left-1/2 -translate-1/2 rounded-sm border border-border bg-lacquer px-2 py-1 text-center font-mono text-[0.5rem] leading-4 text-ivory uppercase shadow-lg">
-            {formatPianoRange(startMidi, noteCount)}
+            {formatPianoRange(startMidi, range.noteCount)}
             <br />
             Release to apply
           </span>
@@ -372,10 +378,9 @@ function FullPianoNavigator({
           />
         ))}
       </div>
-      {renderRange("lower", lowerStartMidi, LOWER_RANGE_NOTE_COUNT)}
-      {renderRange("upper", upperStartMidi, UPPER_RANGE_NOTE_COUNT)}
-      <span className="absolute right-2 bottom-1 z-[4] font-mono text-[0.5rem] tracking-[0.08em] text-lacquer uppercase [@media(max-height:500px)]:hidden">
-        A0 — C8 · 88 keys
+      {ranges.map(renderRange)}
+      <span className="absolute right-2 bottom-1 z-[4] font-mono text-[0.5rem] tracking-[0.08em] text-lacquer uppercase">
+        A0 — C8 · 88-key piano
       </span>
     </figure>
   )
@@ -407,9 +412,23 @@ export function DualRangeView({
     <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3 [@media(max-height:500px)]:gap-1.5">
       <FullPianoNavigator
         activeNotes={activeNotes}
-        lowerStartMidi={lowerStartMidi}
-        upperStartMidi={upperStartMidi}
-        onRangeChange={onRangeChange}
+        ranges={[
+          {
+            id: "lower",
+            maximumStartMidi: MAX_LOWER_START_MIDI,
+            noteCount: LOWER_RANGE_NOTE_COUNT,
+            startMidi: lowerStartMidi,
+          },
+          {
+            id: "upper",
+            maximumStartMidi: MAX_UPPER_START_MIDI,
+            noteCount: UPPER_RANGE_NOTE_COUNT,
+            startMidi: upperStartMidi,
+          },
+        ]}
+        onRangeChange={(range, startMidi) => {
+          if (range !== "standard") onRangeChange(range, startMidi)
+        }}
       />
       <div className="grid min-h-0 grid-cols-2 gap-3 [@media(max-height:500px)]:gap-2">
         <div className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-1.5 [@media(max-height:500px)]:gap-0.5">
@@ -464,6 +483,7 @@ export function DualRangeView({
 }
 
 export function StandardPianoView({
+  activeNotes,
   onRangeChange,
   startMidi,
   ...props
@@ -472,17 +492,38 @@ export function StandardPianoView({
   startMidi: number
 }) {
   return (
-    <div className="relative flex min-w-[52rem] flex-1">
-      <div className="absolute top-2 left-1/2 z-10 -translate-x-1/2">
-        <RangeStepper
-          maximumStartMidi={MAX_STANDARD_START_MIDI}
-          noteCount={STANDARD_RANGE_NOTE_COUNT}
-          startMidi={startMidi}
-          zone="standard"
-          onRangeChange={onRangeChange}
-        />
+    <div className="grid h-full min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-3 [@media(max-height:500px)]:gap-1.5">
+      <FullPianoNavigator
+        activeNotes={activeNotes}
+        ranges={[
+          {
+            id: "standard",
+            maximumStartMidi: MAX_STANDARD_START_MIDI,
+            noteCount: STANDARD_RANGE_NOTE_COUNT,
+            startMidi,
+          },
+        ]}
+        onRangeChange={(_, nextStartMidi) => onRangeChange(nextStartMidi)}
+      />
+      <div className="flex min-h-0 overflow-x-auto">
+        <div className="relative flex min-w-[52rem] flex-1">
+          <div className="absolute top-2 left-1/2 z-10 -translate-x-1/2">
+            <RangeStepper
+              maximumStartMidi={MAX_STANDARD_START_MIDI}
+              noteCount={STANDARD_RANGE_NOTE_COUNT}
+              startMidi={startMidi}
+              zone="standard"
+              onRangeChange={onRangeChange}
+            />
+          </div>
+          <PianoKeyboard
+            {...props}
+            activeNotes={activeNotes}
+            label="Playable piano"
+            variant="standard"
+          />
+        </div>
       </div>
-      <PianoKeyboard {...props} label="Playable piano" variant="standard" />
     </div>
   )
 }

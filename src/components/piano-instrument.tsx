@@ -1,6 +1,6 @@
 "use client"
 
-import { Keyboard, SlidersHorizontal, Volume1, Volume2, VolumeX } from "lucide-react"
+import { Volume1, Volume2, VolumeX } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
   KeyboardEvent as ReactKeyboardEvent,
@@ -36,7 +36,6 @@ import type { PianoKey, PianoZone } from "@/lib/piano"
 import { getPianoAudioEngine } from "@/lib/piano-audio"
 import { SustainSources } from "@/lib/piano-sustain"
 import type { SustainSource } from "@/lib/piano-sustain"
-import { cn } from "@/lib/utils"
 
 const VELOCITY = 0.68
 
@@ -47,6 +46,27 @@ interface InstrumentStatusProps {
   children: React.ReactNode
   label: string
   variant: "default" | "destructive" | "outline" | "secondary"
+}
+
+function DualRangeIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      data-dual-range-icon=""
+      data-icon="inline-start"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      viewBox="0 0 24 24"
+    >
+      <rect height="6" rx="1" width="12" x="3" y="4" />
+      <path d="M6 4v6M9 4v6M12 4v6" />
+      <rect height="6" rx="1" width="12" x="9" y="14" />
+      <path d="M12 14v6M15 14v6M18 14v6" />
+    </svg>
+  )
 }
 
 function InstrumentStatus({ children, label, variant }: InstrumentStatusProps) {
@@ -385,6 +405,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
 
           <div className="flex flex-wrap items-center justify-end gap-2">
             <PedalMenu
+              sustainActive={sustain}
               sustainLocked={sustainLocked}
               onPhonePedalChange={(down) => setSustain("remote-pedal", down)}
               onSustainLockChange={(enabled) => {
@@ -400,19 +421,18 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
                       instrumentMode === "dual-range" ? "Close Dual Range" : "Open Dual Range"
                     }
                     aria-pressed={instrumentMode === "dual-range"}
-                    size="icon"
+                    size="sm"
                     variant={instrumentMode === "dual-range" ? "secondary" : "outline"}
                     onClick={handleModeToggle}
                   />
                 }
               >
-                <SlidersHorizontal aria-hidden="true" />
+                <DualRangeIcon />
+                <span className="font-mono text-[0.5625rem] tracking-[0.1em] uppercase">Dual</span>
               </TooltipTrigger>
               <TooltipContent>Play two independent keyboard ranges</TooltipContent>
             </Tooltip>
-            <InstrumentStatus label={sustainLabel} variant={sustain ? "default" : "outline"}>
-              <Keyboard aria-hidden="true" />
-            </InstrumentStatus>
+            <output className="sr-only" aria-label={sustainLabel} aria-live="polite" />
             <InstrumentStatus
               label={audioLabel}
               variant={audioStatus === "unavailable" ? "destructive" : "secondary"}
@@ -457,12 +477,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
             </div>
           </div>
 
-          <div
-            className={cn(
-              "min-h-[24rem] flex-1 rounded-lg border border-border bg-card p-2 shadow-[var(--shadow-piano)] sm:p-3 [@media(max-height:500px)]:min-h-[15rem] [@media(max-height:500px)]:p-2",
-              instrumentMode === "standard" ? "flex overflow-x-auto" : "grid overflow-hidden",
-            )}
-          >
+          <div className="grid min-h-[24rem] flex-1 overflow-hidden rounded-lg border border-border bg-card p-2 shadow-[var(--shadow-piano)] sm:p-3 [@media(max-height:500px)]:min-h-[15rem] [@media(max-height:500px)]:p-2">
             {instrumentMode === "standard" ? (
               <StandardPianoView
                 {...pianoInputProps}

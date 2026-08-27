@@ -87,8 +87,12 @@ test("opens directly into the responsive playable piano without page overflow", 
   await expect(main.getByRole("button", { name: /Play / })).toHaveCount(32)
   await expect(main.getByRole("button", { name: "Pedal" })).toBeVisible()
   await expect(main.getByRole("status", { name: "Standard range" })).toHaveText("C3–G5")
-  await expect(main.getByRole("status", { name: /Sustain (on|off)/ })).toBeVisible()
+  await expect(main.getByRole("status", { name: /Sustain (on|off)/ })).toBeAttached()
   await expect(main.getByRole("status", { name: "Play a note to start audio" })).toBeVisible()
+  const navigator = main.getByRole("figure", { name: "Full piano range from A0 to C8" })
+  await expect(navigator).toBeVisible()
+  await expect(main.getByRole("slider", { name: "Move Standard range" })).toBeVisible()
+  await expect(main.getByText("A0 — C8 · 88-key piano")).toBeVisible()
   await expect(main.getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms")
   await expect(main.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute(
     "href",
@@ -145,8 +149,8 @@ test("opens directly into the responsive playable piano without page overflow", 
 
   const c3 = main.getByRole("button", { name: "Play C3 with Z" })
   const cSharp3 = main.getByRole("button", { name: "Play C♯3 with S" })
-  const minimumWhiteKeyHeight = testInfo.project.name === "desktop-chromium" ? 500 : 200
-  const minimumBlackKeyHeight = testInfo.project.name === "desktop-chromium" ? 300 : 120
+  const minimumWhiteKeyHeight = testInfo.project.name === "desktop-chromium" ? 430 : 190
+  const minimumBlackKeyHeight = testInfo.project.name === "desktop-chromium" ? 260 : 110
   await expect
     .poll(async () => (await c3.boundingBox())?.height ?? 0)
     .toBeGreaterThan(minimumWhiteKeyHeight)
@@ -177,7 +181,7 @@ test("opens directly into the responsive playable piano without page overflow", 
   expect(hasHorizontalOverflow).toBe(false)
 })
 
-test("opens Dual Range without changing the standard first view", async ({ page }, testInfo) => {
+test("shares one 88-key navigator between Standard and Dual Range", async ({ page }, testInfo) => {
   test.skip(
     testInfo.project.name === "mobile-portrait-chromium",
     "Portrait shows only the landscape orientation guide",
@@ -187,12 +191,18 @@ test("opens Dual Range without changing the standard first view", async ({ page 
 
   const main = page.getByRole("main")
   await expect(main.getByRole("group", { name: "Playable piano" })).toBeVisible()
-  await expect(main.getByRole("figure", { name: "Full piano range from A0 to C8" })).toHaveCount(0)
+  const navigator = main.getByRole("figure", { name: "Full piano range from A0 to C8" })
+  await expect(navigator).toBeVisible()
+  await expect(main.getByRole("slider", { name: "Move Standard range" })).toBeVisible()
+  await expect(main.getByRole("button", { name: "Open Dual Range" })).toContainText("Dual")
 
   await main.getByRole("button", { name: "Open Dual Range" }).click()
 
-  const navigator = main.getByRole("figure", { name: "Full piano range from A0 to C8" })
   await expect(navigator).toBeVisible()
+  await expect(navigator).toHaveCount(1)
+  await expect(main.getByRole("slider", { name: "Move Standard range" })).toHaveCount(0)
+  await expect(main.getByRole("slider", { name: "Move Lower range" })).toBeVisible()
+  await expect(main.getByRole("slider", { name: "Move Upper range" })).toBeVisible()
   const lowerPiano = main.getByRole("group", { name: "Lower playable piano" })
   const upperPiano = main.getByRole("group", { name: "Upper playable piano" })
   await expect(lowerPiano).toBeVisible()
@@ -246,7 +256,8 @@ test("opens Dual Range without changing the standard first view", async ({ page 
 
   await main.getByRole("button", { name: "Close Dual Range" }).click()
   await expect(main.getByRole("group", { name: "Playable piano" })).toBeVisible()
-  await expect(navigator).toHaveCount(0)
+  await expect(navigator).toBeVisible()
+  await expect(main.getByRole("slider", { name: "Move Standard range" })).toBeVisible()
 })
 
 test("explains icon-only header controls on hover and focus", async ({ page }, testInfo) => {
@@ -262,16 +273,13 @@ test("explains icon-only header controls on hover and focus", async ({ page }, t
   })
   const audio = page.getByRole("status", { name: "Play a note to start audio" })
   const dualRange = page.getByRole("button", { name: "Open Dual Range" })
+  await expect(dualRange).toContainText("Dual")
+  await expect(dualRange.locator("[data-dual-range-icon]")).toBeVisible()
 
   await pedal.hover()
   await expect(page.locator('[data-slot="tooltip-content"]', { hasText: "Pedal" })).toBeVisible()
 
-  await sustain.focus()
-  await expect(
-    page.locator('[data-slot="tooltip-content"]', {
-      hasText: "Sustain off — hold Space or use phone pedal",
-    }),
-  ).toBeVisible()
+  await expect(sustain).toBeAttached()
 
   await audio.focus()
   await expect(
@@ -296,8 +304,10 @@ test("opens the pedal menu without shifting the instrument and locks sustain", a
   await page.goto("/")
 
   const main = page.getByRole("main")
+  const pedal = page.getByRole("button", { name: "Pedal" })
+  await expect(pedal).toHaveAttribute("data-sustain-active", "false")
   const before = await main.boundingBox()
-  await page.getByRole("button", { name: "Pedal" }).click()
+  await pedal.click()
 
   const sustainLock = page.getByRole("menuitemcheckbox", { name: /Sustain lock/ })
   await expect(sustainLock).toBeVisible()
@@ -307,6 +317,7 @@ test("opens the pedal menu without shifting the instrument and locks sustain", a
 
   await sustainLock.click()
   await expect(page.getByRole("status", { name: "Sustain on" })).toBeVisible()
+  await expect(pedal).toHaveAttribute("data-sustain-active", "true")
   await page.keyboard.down("Space")
   await page.keyboard.up("Space")
   await expect(page.getByRole("status", { name: "Sustain on" })).toBeVisible()

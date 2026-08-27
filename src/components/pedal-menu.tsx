@@ -20,10 +20,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 interface PedalMenuProps {
   onPhonePedalChange: (down: boolean) => void
   onSustainLockChange: (enabled: boolean) => void
+  sustainActive: boolean
   sustainLocked: boolean
 }
 
-function PedalIcon() {
+function PedalIcon({ active = false }: { active?: boolean }) {
   return (
     <svg
       aria-hidden="true"
@@ -39,6 +40,7 @@ function PedalIcon() {
       <rect height="10" rx="1.5" width="6" x="4" y="10" />
       <path d="M17 3v5" />
       <rect height="13" rx="1.5" width="6" x="14" y="7" />
+      <circle cx="21" cy="20" fill={active ? "currentColor" : "none"} r="1.5" />
     </svg>
   )
 }
@@ -46,6 +48,7 @@ function PedalIcon() {
 export function PedalMenu({
   onPhonePedalChange,
   onSustainLockChange,
+  sustainActive,
   sustainLocked,
 }: PedalMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -65,14 +68,20 @@ export function PedalMenu({
             render={
               <DropdownMenuTrigger
                 render={
-                  <Button ref={triggerRef} aria-label="Pedal" size="icon" variant="outline" />
+                  <Button
+                    ref={triggerRef}
+                    aria-label="Pedal"
+                    data-sustain-active={sustainActive}
+                    size="icon"
+                    variant={sustainActive ? "secondary" : "outline"}
+                  />
                 }
               />
             }
           >
-            <PedalIcon />
+            <PedalIcon active={sustainActive} />
           </TooltipTrigger>
-          <TooltipContent>Pedal</TooltipContent>
+          <TooltipContent>Pedal · Sustain {sustainActive ? "on" : "off"}</TooltipContent>
         </Tooltip>
         <DropdownMenuContent align="end" className="w-72">
           <DropdownMenuGroup>
@@ -87,7 +96,7 @@ export function PedalMenu({
                 closeMenu()
               }}
             >
-              <PedalIcon />
+              <PedalIcon active={sustainLocked} />
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span>Sustain lock</span>
                 <span className="text-[0.625rem] text-muted-foreground">

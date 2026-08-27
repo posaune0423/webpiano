@@ -34,8 +34,9 @@ bun run cf:build
 
 ## Acceptance surfaces
 
-- Immediate standard-piano rendering, explicit `32 notes · 37 keys` counts, button and `←` / `→` semitone range movement, a stable count marker across natural/sharp ranges, keyboard/pointer input, sustain, and stuck-note cleanup.
-- Opt-in Dual Range mode with an 88-key navigator, two independently draggable semitone ranges, session-only settings, and safe drop-time layout changes.
+- Immediate standard-piano rendering, explicit `32 notes · 37 keys` counts, one 88-key navigator with a draggable STANDARD gauge, button and `←` / `→` semitone movement, a stable count marker across natural/sharp ranges, keyboard/pointer input, sustain, and stuck-note cleanup.
+- Opt-in Dual Range mode reusing the same 88-key navigator with two independently draggable LOWER/UPPER gauges, session-only settings, and safe drop-time layout changes.
+- Header semantics and visuals: the pedal trigger reflects active sustain, the visible `DUAL` control uses the custom two-range icon, the speaker remains the audio indicator, and the assistive sustain status stays live without a duplicate visual icon.
 - Pedal-menu discovery, manual sustain lock, and fixed-geometry QR loading/resolved states.
 - Responsive touch piano on phones, with 844×390 landscape as the playable mobile surface and a rotation guide at 390×844 portrait.
 - Typed tRPC session/ICE/end mutations, capability validation, server-gated STUN connectivity, and optional TURN credentials.

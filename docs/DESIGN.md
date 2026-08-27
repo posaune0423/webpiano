@@ -40,8 +40,8 @@ The base radius is 4px. Panels may use 8px (`rounded-lg`); controls and labels s
 - No fake call-to-action is shown for a feature that is not available.
 - Dynamic content never claims layout after it resolves. Its container reserves the final geometry,
   and loading states use matching shadcn Skeleton blocks so content replaces them in place.
-- `/` opens directly into the standard 32-note single keyboard. Dual Range is an explicit opt-in header mode and never replaces the simple first view.
-- Dual Range uses an approximately 8.2:1 A0–C8 navigator with two draggable, semitone-snapped translucent range windows. LOWER exposes 17 bindings (`Z–/`) and UPPER exposes 20 (`Q–]`) in enlarged keyboards below it.
+- `/` opens directly into the standard 32-note single keyboard with a shared approximately 8.2:1 A0–C8 navigator and one draggable STANDARD range. Dual Range is an explicit opt-in header mode and never replaces the simple first view.
+- Dual Range reuses the same 88-key navigator with two draggable, semitone-snapped translucent LOWER/UPPER ranges. LOWER exposes 17 bindings (`Z–/`) and UPPER exposes 20 (`Q–]`) in enlarged keyboards below it.
 - The standard first view exposes 32 notes from the same 37 physical bindings, combines overlapping key labels, and moves the complete range one semitone at a time through the stepper or global `←` / `→` shortcuts.
 - The standard range summary reserves a 56px slot for its note span so adding one or two `♯` glyphs never shifts the trailing `· 32 notes` label.
 - The same summary distinguishes `32 notes` (unique pitches on the merged standard keyboard) from `37 keys` (physical QWERTY bindings).
@@ -49,6 +49,7 @@ The base radius is 4px. Panels may use 8px (`rounded-lg`); controls and labels s
 - Piano keys are specialized native buttons with visible note/PC-key labels, a physical two-black/three-black pattern, pressed state, pointer capture, and keyboard/assistive activation.
 - “Use phone as pedal” opens a focused shadcn Dialog with a short-lived QR code. After pairing, the Dialog closes so the keyboard remains playable and the header retains the connection control.
 - The pedal icon opens one menu containing the manual sustain lock and “Use phone as pedal”. The QR dialog keeps one fixed-height session slot across creating, waiting, failure, and connected states.
+- Header controls keep one clear responsibility each: the pedal icon owns sustain state, the custom stacked-keyboard icon plus visible `DUAL` label toggles Dual Range, and the speaker icon reports audio state. The former standalone keyboard-shaped sustain status remains available only to assistive technology.
 - `/pedal/[sessionId]` is a dedicated full-screen controller: small diagnostic connection copy above one large metal pedal rendered with semantic-token SVG/CSS. It has no piano keyboard or marketing content.
 
 ## Wireframes
@@ -58,6 +59,7 @@ The base radius is 4px. Panels may use 8px (`rounded-lg`); controls and labels s
 - The selected references are `semitone-range-standard-desktop.png`, `semitone-range-dual-desktop.png`, and the corresponding dragging/mobile landscape variants.
 - The range-label comparison is recorded in `standard-range-label-natural-desktop.png`, `standard-range-label-sharp-current-desktop.png`, and the fixed-slot `standard-range-label-fixed-*-desktop.png` pair.
 - The combined note/binding count is recorded in `standard-range-summary-counts-desktop.png`.
+- The approved shared navigator and icon system are recorded in `unified-88-navigator-standard-desktop.png`, `unified-88-navigator-dual-desktop.png`, their mobile landscape counterparts, and `header-icons-labeled-dual-desktop.png`.
 
 ## Motion
 
