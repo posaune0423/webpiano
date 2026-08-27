@@ -62,6 +62,16 @@ test("opens directly into the responsive playable piano without page overflow", 
   await page.goto("/")
 
   const main = page.getByRole("main")
+  const orientationGuide = page.getByRole("region", { name: "Landscape orientation required" })
+
+  if (testInfo.project.name === "mobile-portrait-chromium") {
+    await expect(orientationGuide).toBeVisible()
+    await expect(page.getByText("Turn your device sideways")).toBeVisible()
+    await expect(main).toBeHidden()
+    return
+  }
+
+  await expect(orientationGuide).toBeHidden()
   const piano = main.getByRole("group", { name: "Playable piano" })
 
   await expect(main.getByRole("heading", { level: 1, name: "webpiano Online piano" })).toBeVisible()
@@ -74,10 +84,29 @@ test("opens directly into the responsive playable piano without page overflow", 
     await expect(taskDescription).toBeVisible()
   }
   await expect(piano).toBeVisible()
-  await expect(main.getByRole("button", { name: /Play / })).toHaveCount(24)
-  await expect(main.getByRole("button", { name: "Use phone as pedal" })).toBeVisible()
-  await expect(main.getByRole("status", { name: /Sustain (on|off)/ })).toBeVisible()
-  await expect(main.getByRole("status", { name: "Play a note to start audio" })).toBeVisible()
+  await expect(main.getByRole("button", { name: /Play / })).toHaveCount(32)
+  await expect(main.getByRole("button", { name: "Pedal" })).toBeVisible()
+  await expect(main.getByRole("button", { name: "Install webpiano" })).toBeVisible()
+  await expect(main.getByRole("status", { name: "Standard range" })).toHaveText("C3–G5")
+  await expect(main.getByRole("status", { name: /Sustain (on|off)/ })).toBeAttached()
+  await expect(main.getByRole("status", { name: "Play a note to start audio" })).toBeAttached()
+  await expect(main.getByRole("group", { name: "Keyboard mode" })).toBeVisible()
+  await expect(main.getByRole("button", { name: "Single keyboard" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
+  await expect(main.getByRole("button", { name: "Dual keyboard" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  )
+  await expect(main.getByRole("button", { name: "Mute sound" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  )
+  const navigator = main.getByRole("figure", { name: "Full piano range from A0 to C8" })
+  await expect(navigator).toBeVisible()
+  await expect(main.getByRole("slider", { name: "Move Standard range" })).toBeVisible()
+  await expect(main.getByText("A0 — C8 · 88-key piano")).toBeVisible()
   await expect(main.getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms")
   await expect(main.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute(
     "href",
@@ -87,10 +116,55 @@ test("opens directly into the responsive playable piano without page overflow", 
   await expect(main.getByText("Space holds the pedal")).toHaveCount(0)
   await expect(main.getByText("Coming soon")).toHaveCount(0)
 
+  const mergedKeycap = main.getByRole("button", { name: "Play C4 with Q · ," }).locator("kbd")
+  await expect
+    .poll(async () =>
+      mergedKeycap.evaluate(
+        (element) =>
+          element.scrollWidth <= element.clientWidth &&
+          element.scrollHeight <= element.clientHeight,
+      ),
+    )
+    .toBe(true)
+
+  const standardSummary = main.locator("span").filter({ hasText: /· 32 notes · 37 keys$/ })
+  const notesLeft = async () =>
+    standardSummary.evaluate((element) => {
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+      let node = walker.nextNode()
+
+      while (node) {
+        const markerIndex = node.textContent?.indexOf("32 notes") ?? -1
+        if (markerIndex >= 0) {
+          const range = document.createRange()
+          range.setStart(node, markerIndex)
+          range.setEnd(node, markerIndex + "32 notes".length)
+          return range.getBoundingClientRect().left
+        }
+        node = walker.nextNode()
+      }
+
+      throw new Error("32 notes marker was not rendered")
+    })
+  const naturalNotesLeft =
+    testInfo.project.name === "desktop-chromium" ? await notesLeft() : undefined
+
+  await main.getByRole("button", { name: "Standard semitone down" }).click()
+  await expect(main.getByRole("status", { name: "Standard range" })).toHaveText("B2–F♯5")
+  if (naturalNotesLeft !== undefined) {
+    await expect.poll(notesLeft).toBeCloseTo(naturalNotesLeft, 0)
+  }
+  await main.getByRole("button", { name: "Standard semitone up" }).click()
+
+  await page.keyboard.press("ArrowLeft")
+  await expect(main.getByRole("status", { name: "Standard range" })).toHaveText("B2–F♯5")
+  await page.keyboard.press("ArrowRight")
+  await expect(main.getByRole("status", { name: "Standard range" })).toHaveText("C3–G5")
+
   const c3 = main.getByRole("button", { name: "Play C3 with Z" })
   const cSharp3 = main.getByRole("button", { name: "Play C♯3 with S" })
-  const minimumWhiteKeyHeight = testInfo.project.name === "desktop-chromium" ? 500 : 200
-  const minimumBlackKeyHeight = testInfo.project.name === "desktop-chromium" ? 300 : 120
+  const minimumWhiteKeyHeight = testInfo.project.name === "desktop-chromium" ? 430 : 190
+  const minimumBlackKeyHeight = testInfo.project.name === "desktop-chromium" ? 260 : 110
   await expect
     .poll(async () => (await c3.boundingBox())?.height ?? 0)
     .toBeGreaterThan(minimumWhiteKeyHeight)
@@ -100,7 +174,7 @@ test("opens directly into the responsive playable piano without page overflow", 
 
   await page.keyboard.down("z")
   await expect(c3).toHaveAttribute("aria-pressed", "true")
-  await expect(main.getByRole("status", { name: "Sound on" })).toBeVisible()
+  await expect(main.getByRole("status", { name: "Sound on" })).toBeAttached()
   await page.keyboard.up("z")
   await expect(c3).toHaveAttribute("aria-pressed", "false")
 
@@ -121,34 +195,262 @@ test("opens directly into the responsive playable piano without page overflow", 
   expect(hasHorizontalOverflow).toBe(false)
 })
 
-test("explains icon-only header controls on hover and focus", async ({ page }) => {
+test("shares one 88-key navigator between Standard and Dual Range", async ({ page }, testInfo) => {
+  test.skip(
+    testInfo.project.name === "mobile-portrait-chromium",
+    "Portrait shows only the landscape orientation guide",
+  )
+
   await page.goto("/")
 
-  const pedal = page.getByRole("button", { name: "Use phone as pedal" })
-  const sustain = page.getByRole("status", {
-    name: "Sustain off — hold Space or use phone pedal",
-  })
-  const audio = page.getByRole("status", { name: "Play a note to start audio" })
+  const main = page.getByRole("main")
+  await expect(main.getByRole("group", { name: "Playable piano" })).toBeVisible()
+  const navigator = main.getByRole("figure", { name: "Full piano range from A0 to C8" })
+  await expect(navigator).toBeVisible()
+  await expect(main.getByRole("slider", { name: "Move Standard range" })).toBeVisible()
+  await expect(main.getByRole("button", { name: "Single keyboard" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
 
-  await pedal.hover()
-  await expect(
-    page.locator('[data-slot="tooltip-content"]', { hasText: "Use phone as pedal" }),
-  ).toBeVisible()
+  await main.getByRole("button", { name: "Dual keyboard" }).click()
 
-  await sustain.focus()
-  await expect(
-    page.locator('[data-slot="tooltip-content"]', {
-      hasText: "Sustain off — hold Space or use phone pedal",
-    }),
-  ).toBeVisible()
+  await expect(navigator).toBeVisible()
+  await expect(navigator).toHaveCount(1)
+  await expect(main.getByRole("slider", { name: "Move Standard range" })).toHaveCount(0)
+  await expect(main.getByRole("slider", { name: "Move Lower range" })).toBeVisible()
+  await expect(main.getByRole("slider", { name: "Move Upper range" })).toBeVisible()
+  await expect(main.getByRole("button", { name: "Dual keyboard" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
+  const lowerPiano = main.getByRole("group", { name: "Lower playable piano" })
+  const upperPiano = main.getByRole("group", { name: "Upper playable piano" })
+  await expect(lowerPiano).toBeVisible()
+  await expect(upperPiano).toBeVisible()
+  await expect(main.getByRole("button", { name: /Play / })).toHaveCount(37)
 
-  await audio.focus()
-  await expect(
-    page.locator('[data-slot="tooltip-content"]', { hasText: "Play a note to start audio" }),
-  ).toBeVisible()
+  const minimumZoneHeight = testInfo.project.name === "desktop-chromium" ? 300 : 120
+  await expect
+    .poll(async () => (await lowerPiano.boundingBox())?.height ?? 0)
+    .toBeGreaterThan(minimumZoneHeight)
+  await expect
+    .poll(async () => (await upperPiano.boundingBox())?.height ?? 0)
+    .toBeGreaterThan(minimumZoneHeight)
+
+  const navigatorBox = await navigator.boundingBox()
+  expect(navigatorBox).not.toBeNull()
+  expect((navigatorBox?.width ?? 0) / (navigatorBox?.height ?? 1)).toBeGreaterThan(7.8)
+  expect((navigatorBox?.width ?? 0) / (navigatorBox?.height ?? 1)).toBeLessThan(8.6)
+
+  await main.getByRole("button", { name: "Lower semitone down" }).click()
+  await expect(main.getByRole("status", { name: "Lower range" })).toHaveText("B2–D♯4")
+
+  const lowerC = main.getByRole("button", { name: "Play B2 with Z" })
+  await page.keyboard.down("z")
+  await expect(lowerC).toHaveAttribute("aria-pressed", "true")
+  await expect(navigator.locator('[data-midi="47"]')).toHaveAttribute("data-active", "true")
+  await page.keyboard.up("z")
+
+  const lowerRange = main.getByRole("slider", { name: "Move Lower range" })
+  const lowerRangeBox = await lowerRange.boundingBox()
+  const navigatorBoxForDrag = await navigator.boundingBox()
+  expect(lowerRangeBox).not.toBeNull()
+  expect(navigatorBoxForDrag).not.toBeNull()
+  const startMidi = Number(await lowerRange.getAttribute("aria-valuenow"))
+  await page.mouse.move(
+    (lowerRangeBox?.x ?? 0) + (lowerRangeBox?.width ?? 0) / 2,
+    (lowerRangeBox?.y ?? 0) + (lowerRangeBox?.height ?? 0) / 2,
+  )
+  await page.mouse.down()
+  await page.mouse.move(
+    (lowerRangeBox?.x ?? 0) +
+      (lowerRangeBox?.width ?? 0) / 2 -
+      (navigatorBoxForDrag?.width ?? 0) * 0.06,
+    (lowerRangeBox?.y ?? 0) + (lowerRangeBox?.height ?? 0) / 2,
+  )
+  await expect(lowerRange).toHaveAttribute("data-dragging", "true")
+  await page.mouse.up()
+  await expect
+    .poll(async () => Number(await lowerRange.getAttribute("aria-valuenow")))
+    .toBeLessThan(startMidi)
+
+  await main.getByRole("button", { name: "Single keyboard" }).click()
+  await expect(main.getByRole("group", { name: "Playable piano" })).toBeVisible()
+  await expect(navigator).toBeVisible()
+  await expect(main.getByRole("slider", { name: "Move Standard range" })).toBeVisible()
 })
 
-test("opens the legal pages from the footer", async ({ page }) => {
+test("explains icon-only header controls on hover and focus", async ({ page }, testInfo) => {
+  test.skip(
+    testInfo.project.name === "mobile-portrait-chromium",
+    "Portrait shows only the landscape orientation guide",
+  )
+  await page.goto("/")
+
+  const pedal = page.getByRole("button", { name: "Pedal" })
+  const sustain = page.getByRole("status", {
+    name: "Sustain off — press Space or use phone pedal",
+  })
+  const audio = page.getByRole("status", { name: "Play a note to start audio" })
+  const singleMode = page.getByRole("button", { name: "Single keyboard" })
+  const dualMode = page.getByRole("button", { name: "Dual keyboard" })
+  const soundToggle = page.getByRole("button", { name: "Mute sound" })
+  await expect(singleMode.locator("[data-single-range-icon]")).toBeVisible()
+  await expect(dualMode.locator("[data-dual-range-icon]")).toBeVisible()
+
+  await pedal.hover()
+  await expect(page.locator('[data-slot="tooltip-content"]', { hasText: "Pedal" })).toBeVisible()
+
+  await expect(sustain).toBeAttached()
+
+  await expect(audio).toBeAttached()
+  await soundToggle.hover()
+  await expect(
+    page.locator('[data-slot="tooltip-content"]', { hasText: "Mute sound" }),
+  ).toBeVisible()
+
+  await soundToggle.click()
+  const unmute = page.getByRole("button", { name: "Unmute sound" })
+  await expect(unmute).toHaveAttribute("aria-pressed", "true")
+  await expect(unmute.locator('[data-sound-icon="muted"]')).toBeVisible()
+})
+
+test("opens the pedal menu without shifting the instrument and locks sustain", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name === "mobile-portrait-chromium",
+    "Portrait shows only the landscape orientation guide",
+  )
+  await page.goto("/")
+
+  const main = page.getByRole("main")
+  const pedal = page.getByRole("button", { name: "Pedal" })
+  await expect(pedal).toHaveAttribute("data-sustain-active", "false")
+  const before = await main.boundingBox()
+  await pedal.click()
+
+  const sustainLock = page.getByRole("menuitemcheckbox", { name: /Sustain lock/ })
+  await expect(sustainLock).toBeVisible()
+  await expect(page.getByRole("menuitem", { name: /Use phone as pedal/ })).toBeVisible()
+  const after = await main.boundingBox()
+  expect(after).toEqual(before)
+
+  await sustainLock.click()
+  await expect(page.getByRole("status", { name: "Sustain locked" })).toBeVisible()
+  await expect(pedal).toHaveAttribute("data-sustain-active", "true")
+  await expect(pedal).toHaveAttribute("data-sustain-locked", "true")
+  await expect(pedal.locator('[data-pedal-lock="locked"]')).toBeVisible()
+  await page.keyboard.down("Space")
+  await page.keyboard.up("Space")
+  await expect(
+    page.getByRole("status", { name: "Sustain off — press Space or use phone pedal" }),
+  ).toBeVisible()
+  await expect(pedal).toHaveAttribute("data-sustain-locked", "false")
+  await expect(pedal.locator('[data-pedal-lock="unlocked"]')).toBeVisible()
+
+  await page.getByRole("button", { name: "Pedal" }).click()
+  await page.getByRole("menuitem", { name: /Use phone as pedal/ }).click()
+  await expect(page.getByRole("dialog", { name: "Connect your phone" })).toBeVisible()
+})
+
+test("opens a stable fallback Drawer and runs the desktop prompt from the header", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name === "mobile-portrait-chromium",
+    "Portrait shows only the landscape orientation guide",
+  )
+  await page.goto("/")
+
+  const installTrigger = page.getByRole("button", { name: "Install webpiano" })
+  const installSlot = page.locator("[data-install-state]")
+  const triggerBoxBefore = await installSlot.boundingBox()
+  expect(triggerBoxBefore).not.toBeNull()
+
+  await installTrigger.click()
+  const drawer = page.getByRole("dialog", { name: "Install webpiano" })
+  await expect(drawer).toBeVisible()
+  await expect(drawer.getByText("Use your browser’s install option")).toBeVisible()
+  const installContent = drawer.locator("[data-install-content]")
+  const contentSize = async () => {
+    const box = await installContent.boundingBox()
+    return { height: box?.height ?? 0, width: box?.width ?? 0 }
+  }
+  await expect.poll(async () => (await contentSize()).height).toBe(128)
+  const contentSizeBefore = await contentSize()
+
+  await page.evaluate(() => {
+    const probeWindow = window as Window & { __installPromptCount?: number }
+    probeWindow.__installPromptCount = 0
+    const event = new Event("beforeinstallprompt", { cancelable: true })
+    Object.defineProperty(event, "prompt", {
+      value: async () => {
+        probeWindow.__installPromptCount = (probeWindow.__installPromptCount ?? 0) + 1
+        return { outcome: "accepted", platform: "web" }
+      },
+    })
+    window.dispatchEvent(event)
+  })
+
+  await expect(installSlot).toHaveAttribute("data-install-state", "installable")
+  const triggerBoxAfter = await installSlot.boundingBox()
+  expect(triggerBoxAfter).toEqual(triggerBoxBefore)
+  await expect
+    .poll(async () => (await contentSize()).height)
+    .toBeCloseTo(contentSizeBefore.height, 3)
+  await expect.poll(async () => (await contentSize()).width).toBeCloseTo(contentSizeBefore.width, 3)
+
+  await drawer.getByRole("button", { name: "Close" }).click()
+  await expect(drawer).toBeHidden()
+  await installTrigger.click()
+  await expect
+    .poll(async () =>
+      page.evaluate(
+        () => (window as Window & { __installPromptCount?: number }).__installPromptCount ?? 0,
+      ),
+    )
+    .toBe(1)
+  await expect(drawer).toBeHidden()
+
+  await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")))
+  await expect(page.getByRole("button", { name: "webpiano is installed" })).toHaveAttribute(
+    "data-install-state",
+    "installed",
+  )
+  expect(await installSlot.boundingBox()).toEqual(triggerBoxBefore)
+})
+
+test("shows Add to Home Screen steps on iPhone and iPad browsers", async ({ page }, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "mobile-landscape-chromium",
+    "The manual mobile install flow is covered in landscape",
+  )
+  await page.addInitScript(() => {
+    Object.defineProperties(navigator, {
+      maxTouchPoints: { configurable: true, get: () => 5 },
+      platform: { configurable: true, get: () => "iPhone" },
+      userAgent: {
+        configurable: true,
+        get: () => "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)",
+      },
+    })
+  })
+  await page.goto("/")
+
+  await page.getByRole("button", { name: "Install webpiano" }).click()
+  const drawer = page.getByRole("dialog", { name: "Install webpiano" })
+  await expect(drawer.getByText("Add to Home Screen")).toBeVisible()
+  await expect(drawer.getByText(/Tap the browser’s/)).toBeVisible()
+  await expect(drawer.getByText("Space toggles Sustain Lock.")).toBeVisible()
+})
+
+test("opens the legal pages from the footer", async ({ page }, testInfo) => {
+  test.skip(
+    testInfo.project.name === "mobile-portrait-chromium",
+    "Portrait shows only the landscape orientation guide",
+  )
   await page.goto("/")
 
   await page.getByRole("link", { name: "Terms" }).click()
@@ -160,7 +462,13 @@ test("opens the legal pages from the footer", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Privacy Policy" })).toBeVisible()
 })
 
-test("crossfades route content with the native View Transitions API", async ({ page }) => {
+test("crossfades route content with the native View Transitions API", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name === "mobile-portrait-chromium",
+    "Portrait shows only the landscape orientation guide",
+  )
   await page.goto("/")
   await installViewTransitionProbe(page)
 
@@ -187,7 +495,11 @@ test("crossfades route content with the native View Transitions API", async ({ p
   await expect(page.getByRole("heading", { level: 1, name: "Privacy Policy" })).toBeVisible()
 })
 
-test("removes route animation for reduced motion", async ({ page }) => {
+test("removes route animation for reduced motion", async ({ page }, testInfo) => {
+  test.skip(
+    testInfo.project.name === "mobile-portrait-chromium",
+    "Portrait shows only the landscape orientation guide",
+  )
   await page.emulateMedia({ reducedMotion: "reduce" })
   await page.goto("/")
   await installViewTransitionProbe(page)

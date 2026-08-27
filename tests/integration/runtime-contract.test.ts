@@ -51,6 +51,23 @@ describe("runtime contract", () => {
     })
   })
 
+  test("publishes a stable Cloudflare preview URL for pull requests", () => {
+    const packageJson = JSON.parse(read("package.json")) as {
+      scripts: Record<string, string>
+    }
+
+    expect(packageJson.scripts["cf:deploy:preview"]).toBe(
+      "bun scripts/deploy-cloudflare-preview.ts",
+    )
+    const workflow = read(".github/workflows/cloudflare-preview.yml")
+    const deployPreview = read("scripts/deploy-cloudflare-preview.ts")
+    expect(workflow).toContain("pull-requests: write")
+    expect(workflow).toContain("cloudflare-preview-url")
+    expect(workflow).toContain("yamadaasuma.workers.dev")
+    expect(deployPreview).toContain("environment.WRANGLER_CI_OVERRIDE_NAME = workerName")
+    expect(deployPreview).toContain("delete environment.WRANGLER_CI_MATCH_TAG")
+  })
+
   test("defines the typed public URL for development and production", () => {
     expect(read(".env.development")).toContain("NEXT_PUBLIC_APP_URL=http://localhost:3000")
     expect(read(".env.production")).toContain("NEXT_PUBLIC_APP_URL=https://webpiano.xyz")

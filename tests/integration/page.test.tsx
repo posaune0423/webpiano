@@ -20,7 +20,7 @@ describe("piano page", () => {
       ),
     ).toBeTruthy()
     expect(screen.getByRole("group", { name: "Playable piano" })).toBeTruthy()
-    expect(screen.getAllByRole("button", { name: /Play / })).toHaveLength(24)
+    expect(screen.getAllByRole("button", { name: /Play / })).toHaveLength(32)
     expect(screen.queryByText("Coming soon")).toBeNull()
     expect(screen.queryByRole("img", { name: "Glossy grand piano keys" })).toBeNull()
     const structuredData = document.querySelector('script[type="application/ld+json"]')

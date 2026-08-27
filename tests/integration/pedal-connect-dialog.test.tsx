@@ -17,8 +17,10 @@ const JOIN_URL = `https://webpiano.xyz/pedal/${SESSION_ID}#${GUEST_TOKEN}`
 
 function renderDialog({
   deferIce = false,
+  deferSession = false,
   failFirstIce = false,
-}: { deferIce?: boolean; failFirstIce?: boolean } = {}) {
+  open,
+}: { deferIce?: boolean; deferSession?: boolean; failFirstIce?: boolean; open?: boolean } = {}) {
   const iceConfiguration = {
     iceServers: [{ urls: "stun:stun.cloudflare.com:3478" }],
     iceTransportPolicy: "all" as const,
@@ -32,14 +34,19 @@ function renderDialog({
   if (failFirstIce) {
     issueIceServers.mockRejectedValueOnce(new Error("temporary failure"))
   }
+  const sessionOutput = {
+    sessionId: SESSION_ID,
+    hostToken: HOST_TOKEN,
+    joinUrl: JOIN_URL,
+    signalPath: `/api/pedal/sessions/${SESSION_ID}/signal`,
+    pairingExpiresAt: "2026-08-26T12:10:00.000Z",
+  }
+  let resolveSession: (() => void) | undefined
+  const deferredSession = new Promise<typeof sessionOutput>((resolve) => {
+    resolveSession = () => resolve(sessionOutput)
+  })
   const service: PedalService = {
-    createSession: mock(async () => ({
-      sessionId: SESSION_ID,
-      hostToken: HOST_TOKEN,
-      joinUrl: JOIN_URL,
-      signalPath: `/api/pedal/sessions/${SESSION_ID}/signal`,
-      pairingExpiresAt: "2026-08-26T12:10:00.000Z",
-    })),
+    createSession: mock(async () => (deferSession ? deferredSession : sessionOutput)),
     issueIceServers,
     endSession: mock(async () => ({ ended: true as const })),
   }
@@ -62,14 +69,63 @@ function renderDialog({
 
   render(
     <PedalApiProvider client={client} queryClient={queryClient}>
-      <PedalConnectDialog onPedalChange={onPedalChange} peerFactory={peerFactory} />
+      <PedalConnectDialog open={open} onPedalChange={onPedalChange} peerFactory={peerFactory} />
     </PedalApiProvider>,
   )
 
-  return { onPedalChange, peer, resolveIce, service, getPeerOptions: () => peerOptions }
+  return {
+    onPedalChange,
+    peer,
+    resolveIce,
+    resolveSession,
+    service,
+    getPeerOptions: () => peerOptions,
+  }
 }
 
 describe("PedalConnectDialog", () => {
+  test("starts a session when a parent controls the dialog open state", async () => {
+    const { service } = renderDialog({ open: true })
+
+    expect(await screen.findByTitle("QR code for phone pedal")).toBeTruthy()
+    expect(service.createSession).toHaveBeenCalledTimes(1)
+  })
+
+  test("does not restart a controlled session after an explicit disconnect", async () => {
+    const { getPeerOptions, service } = renderDialog({ open: true })
+
+    await screen.findByTitle("QR code for phone pedal")
+    await waitFor(() => expect(getPeerOptions()).toBeDefined())
+    act(() => getPeerOptions()?.onStatusChange?.("connected"))
+    fireEvent.click(await screen.findByRole("button", { name: "Disconnect" }))
+    await waitFor(() => expect(service.endSession).toHaveBeenCalledTimes(1))
+
+    expect(service.createSession).toHaveBeenCalledTimes(1)
+  })
+
+  test("keeps one fixed content slot while the QR session loads", async () => {
+    const { resolveSession } = renderDialog({ deferSession: true })
+
+    fireEvent.click(screen.getByRole("button", { name: "Use phone as pedal" }))
+    await screen.findByRole("dialog")
+
+    const loadingSlot = document.querySelector("[data-pedal-session-slot]")
+    expect(loadingSlot).not.toBeNull()
+    expect(loadingSlot?.getAttribute("data-state")).toBe("creating")
+    expect(loadingSlot?.className).toContain("h-[26.25rem]")
+
+    await act(async () => {
+      resolveSession?.()
+      await Promise.resolve()
+    })
+    await screen.findByTitle("QR code for phone pedal")
+
+    const readySlot = document.querySelector("[data-pedal-session-slot]")
+    expect(readySlot).toBe(loadingSlot)
+    expect(readySlot?.getAttribute("data-state")).toBe("waiting")
+    expect(readySlot?.className).toContain("h-[26.25rem]")
+  })
+
   test("creates a typed session and shows a scannable pairing link", async () => {
     const { peer, service, getPeerOptions } = renderDialog()
 

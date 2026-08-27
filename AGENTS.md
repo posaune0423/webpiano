@@ -16,6 +16,9 @@ webpiano is a single Next.js App Router application for a premium, PC-keyboard-f
 - Keep state, input mapping, and audio synthesis in separate modules.
 - Use shadcn Base UI components and semantic tokens. Do not add raw colors in components.
 - Use `gap-*`, not `space-*`, for sibling spacing. Compose classes with `cn()`.
+- Do not introduce layout shifts when asynchronous or conditional content appears. Reserve the final
+  width and height before loading starts, and render a same-geometry shadcn Skeleton until the real
+  content is ready.
 - Do not advertise controls or features that do not exist.
 - Run `bun run check` before handoff. Run Playwright when layout, responsive behavior, PWA, or browser behavior changes.
 

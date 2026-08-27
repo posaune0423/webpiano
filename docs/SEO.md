@@ -241,7 +241,7 @@ SISTRIXは2021年ページエクスペリエンス展開時、Core Web Vitals通
 
 - `/`はマーケティング用ランディングページでなく演奏可能な楽器を直接レンダリングする。
 - title、description、canonical URL、Open Graphメタデータ、PWA manifest、viewportは`src/constants/metadata.ts`と`src/app/layout.tsx`で設定される。
-- 楽器は24キーのコンピューターキーボードマップ、ポインター／タッチ入力、Spaceキーサステイン、スマートフォンペダルに対応する。
+- 楽器は37個の物理キーを32音へ割り当てる標準鍵盤、左右独立レンジ、ポインター／タッチ入力、Spaceキー／手動固定サステイン、スマートフォンペダルに対応する。
 - 空のJavaScript shellではなく意味のあるサーバーサイドレンダリングHTMLを返す。
 
 実装には次も含まれる。
