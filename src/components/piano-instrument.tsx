@@ -23,8 +23,10 @@ import {
   DEFAULT_LOWER_START_MIDI,
   DEFAULT_UPPER_START_MIDI,
   FULL_PIANO_MIN_MIDI,
+  LOWER_RANGE_NOTE_COUNT,
   MAX_STANDARD_START_MIDI,
   STANDARD_RANGE_NOTE_COUNT,
+  UPPER_RANGE_NOTE_COUNT,
   createPianoLayout,
   createStandardPianoLayout,
   formatPianoRange,
@@ -437,7 +439,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
                     <span className="inline-block w-14">
                       {formatPianoRange(standardStartMidi, STANDARD_RANGE_NOTE_COUNT)}
                     </span>
-                    {" · 32 notes"}
+                    {` · ${STANDARD_RANGE_NOTE_COUNT} notes · ${LOWER_RANGE_NOTE_COUNT + UPPER_RANGE_NOTE_COUNT} keys`}
                   </>
                 ) : (
                   "A0 — C8 navigator · 2 active ranges"

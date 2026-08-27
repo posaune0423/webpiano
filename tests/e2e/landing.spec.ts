@@ -109,7 +109,7 @@ test("opens directly into the responsive playable piano without page overflow", 
     )
     .toBe(true)
 
-  const standardSummary = main.locator("span").filter({ hasText: /· 32 notes$/ })
+  const standardSummary = main.locator("span").filter({ hasText: /· 32 notes · 37 keys$/ })
   const notesLeft = async () =>
     standardSummary.evaluate((element) => {
       const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)

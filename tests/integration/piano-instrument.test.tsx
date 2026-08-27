@@ -43,6 +43,7 @@ describe("PianoInstrument", () => {
     expect(screen.getByRole("button", { name: "Standard semitone up" })).toBeTruthy()
     expect(screen.getByRole("button", { name: "Open Dual Range" })).toBeTruthy()
     expect(screen.queryByRole("figure", { name: "Full piano range from A0 to C8" })).toBeNull()
+    expect(screen.getByText(/32 notes · 37 keys/)).toBeTruthy()
     expect(screen.getByText("Z–/ · lower reach")).toBeTruthy()
     expect(screen.getByText("Q–] · upper reach")).toBeTruthy()
     expect(screen.getByRole("button", { name: "Pedal" }).textContent).toBe("")

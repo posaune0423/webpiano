@@ -44,6 +44,7 @@ The base radius is 4px. Panels may use 8px (`rounded-lg`); controls and labels s
 - Dual Range uses an approximately 8.2:1 A0–C8 navigator with two draggable, semitone-snapped translucent range windows. LOWER exposes 17 bindings (`Z–/`) and UPPER exposes 20 (`Q–]`) in enlarged keyboards below it.
 - The standard first view exposes 32 notes from the same 37 physical bindings, combines overlapping key labels, and moves the complete range one semitone at a time through the stepper or global `←` / `→` shortcuts.
 - The standard range summary reserves a 56px slot for its note span so adding one or two `♯` glyphs never shifts the trailing `· 32 notes` label.
+- The same summary distinguishes `32 notes` (unique pitches on the merged standard keyboard) from `37 keys` (physical QWERTY bindings).
 - The instrument uses landscape as the primary phone layout. Portrait shows only a restrained orientation guide; the playable surface is not compressed into portrait.
 - Piano keys are specialized native buttons with visible note/PC-key labels, a physical two-black/three-black pattern, pressed state, pointer capture, and keyboard/assistive activation.
 - “Use phone as pedal” opens a focused shadcn Dialog with a short-lived QR code. After pairing, the Dialog closes so the keyboard remains playable and the header retains the connection control.
@@ -56,6 +57,7 @@ The base radius is 4px. Panels may use 8px (`rounded-lg`); controls and labels s
 - Wireframes extend the actual product surface and semantic tokens; they are not independent redesigns or generic mockups.
 - The selected references are `semitone-range-standard-desktop.png`, `semitone-range-dual-desktop.png`, and the corresponding dragging/mobile landscape variants.
 - The range-label comparison is recorded in `standard-range-label-natural-desktop.png`, `standard-range-label-sharp-current-desktop.png`, and the fixed-slot `standard-range-label-fixed-*-desktop.png` pair.
+- The combined note/binding count is recorded in `standard-range-summary-counts-desktop.png`.
 
 ## Motion
 
