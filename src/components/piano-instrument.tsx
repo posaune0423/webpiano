@@ -432,9 +432,16 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
           <div className="flex flex-wrap items-end justify-between gap-4 [@media(max-height:500px)]:hidden">
             <div className="flex flex-col gap-1">
               <span className="font-mono text-[0.625rem] tracking-[0.16em] text-brass uppercase">
-                {instrumentMode === "standard"
-                  ? `${formatPianoRange(standardStartMidi, STANDARD_RANGE_NOTE_COUNT)} · 32 notes`
-                  : "A0 — C8 navigator · 2 active ranges"}
+                {instrumentMode === "standard" ? (
+                  <>
+                    <span className="inline-block w-14">
+                      {formatPianoRange(standardStartMidi, STANDARD_RANGE_NOTE_COUNT)}
+                    </span>
+                    {" · 32 notes"}
+                  </>
+                ) : (
+                  "A0 — C8 navigator · 2 active ranges"
+                )}
               </span>
               <p className="max-w-2xl text-sm text-muted-foreground">
                 Play this free online piano with your computer keyboard or touch. No download or

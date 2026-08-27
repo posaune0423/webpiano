@@ -109,8 +109,33 @@ test("opens directly into the responsive playable piano without page overflow", 
     )
     .toBe(true)
 
+  const standardSummary = main.locator("span").filter({ hasText: /· 32 notes$/ })
+  const notesLeft = async () =>
+    standardSummary.evaluate((element) => {
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+      let node = walker.nextNode()
+
+      while (node) {
+        const markerIndex = node.textContent?.indexOf("32 notes") ?? -1
+        if (markerIndex >= 0) {
+          const range = document.createRange()
+          range.setStart(node, markerIndex)
+          range.setEnd(node, markerIndex + "32 notes".length)
+          return range.getBoundingClientRect().left
+        }
+        node = walker.nextNode()
+      }
+
+      throw new Error("32 notes marker was not rendered")
+    })
+  const naturalNotesLeft =
+    testInfo.project.name === "desktop-chromium" ? await notesLeft() : undefined
+
   await main.getByRole("button", { name: "Standard semitone down" }).click()
   await expect(main.getByRole("status", { name: "Standard range" })).toHaveText("B2–F♯5")
+  if (naturalNotesLeft !== undefined) {
+    await expect.poll(notesLeft).toBeCloseTo(naturalNotesLeft, 0)
+  }
   await main.getByRole("button", { name: "Standard semitone up" }).click()
 
   await page.keyboard.press("ArrowLeft")
