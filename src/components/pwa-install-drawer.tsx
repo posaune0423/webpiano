@@ -11,7 +11,6 @@ import {
   DrawerDescription,
   DrawerHeader,
   DrawerTitle,
-  DrawerTrigger,
 } from "@/components/ui/drawer"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -114,16 +113,20 @@ export function PwaInstallDrawer() {
       <Tooltip>
         <TooltipTrigger
           render={
-            <DrawerTrigger
-              render={
-                <Button
-                  aria-label={triggerLabel}
-                  className="w-20 gap-1.5 [@media(max-height:500px)]:size-8 [@media(max-height:500px)]:p-0"
-                  data-install-state={state}
-                  size="sm"
-                  variant={installed ? "secondary" : "outline"}
-                />
-              }
+            <Button
+              aria-haspopup={state === "installable" ? undefined : "dialog"}
+              aria-label={triggerLabel}
+              className="w-20 gap-1.5 [@media(max-height:500px)]:size-8 [@media(max-height:500px)]:p-0"
+              data-install-state={state}
+              size="sm"
+              variant={installed ? "secondary" : "outline"}
+              onClick={() => {
+                if (state === "installable") {
+                  void install()
+                  return
+                }
+                setOpen(true)
+              }}
             />
           }
         >

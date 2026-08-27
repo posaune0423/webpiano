@@ -44,7 +44,7 @@ bun run cf:build
 - Durable Object host/guest admission, authenticated-only relay, waiting/ready signaling, expiry, rate limits, and WebSocket message validation.
 - WebRTC offer/answer/ICE exchange, ordered pedal messages, source-owned sustain, and 750ms deadman release.
 - QR pairing dialog and the full-screen `/pedal/[sessionId]` touch controller.
-- Offline fallback, PWA manifest, captured Chromium install prompt, installed state, and iPhone/iPad Add to Home Screen guidance.
+- Offline fallback, PWA manifest, one-click captured Chromium install prompt from the header, installed state, and iPhone/iPad Add to Home Screen guidance.
 - Asset format, dimensions, budgets, and icon purposes.
 - Oxlint native and JavaScript plugin contract.
 - Desktop 1440×900, mobile landscape 844×390, and portrait 390×844 screenshots without document overflow.

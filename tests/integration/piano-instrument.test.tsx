@@ -335,7 +335,7 @@ describe("PianoInstrument", () => {
     expect(screen.getByRole("button", { name: "Close" })).toBeTruthy()
   })
 
-  test("runs the captured browser install prompt from the Drawer", async () => {
+  test("runs the captured browser install prompt directly from the header", async () => {
     const prompt = mock(async () => ({ outcome: "accepted" as const, platform: "web" }))
     renderInstrument()
     const event = new Event("beforeinstallprompt", { cancelable: true })
@@ -344,14 +344,14 @@ describe("PianoInstrument", () => {
     await act(async () => {
       window.dispatchEvent(event)
     })
-    fireEvent.click(screen.getByRole("button", { name: "Install webpiano" }))
     await act(async () => {
-      fireEvent.click(await screen.findByRole("button", { name: "Install app" }))
+      fireEvent.click(screen.getByRole("button", { name: "Install webpiano" }))
       await Promise.resolve()
       await Promise.resolve()
     })
 
     expect(prompt).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole("dialog", { name: "Install webpiano" })).toBeNull()
   })
 
   test("toggles sound mute state and icon without changing the keyboard mode", () => {

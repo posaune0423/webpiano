@@ -355,7 +355,7 @@ test("opens the pedal menu without shifting the instrument and locks sustain", a
   await expect(page.getByRole("dialog", { name: "Connect your phone" })).toBeVisible()
 })
 
-test("opens a stable install Drawer and runs the browser install prompt", async ({
+test("opens a stable fallback Drawer and runs the desktop prompt from the header", async ({
   page,
 }, testInfo) => {
   test.skip(
@@ -402,8 +402,9 @@ test("opens a stable install Drawer and runs the browser install prompt", async 
     .toBeCloseTo(contentSizeBefore.height, 3)
   await expect.poll(async () => (await contentSize()).width).toBeCloseTo(contentSizeBefore.width, 3)
 
-  await drawer.getByRole("button", { name: "Install app" }).click()
+  await drawer.getByRole("button", { name: "Close" }).click()
   await expect(drawer).toBeHidden()
+  await installTrigger.click()
   await expect
     .poll(async () =>
       page.evaluate(
@@ -411,6 +412,7 @@ test("opens a stable install Drawer and runs the browser install prompt", async 
       ),
     )
     .toBe(1)
+  await expect(drawer).toBeHidden()
 
   await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")))
   await expect(page.getByRole("button", { name: "webpiano is installed" })).toHaveAttribute(
