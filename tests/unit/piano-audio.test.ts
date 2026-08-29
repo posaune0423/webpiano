@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from "bun:test"
 
-import { SynthPianoEngine } from "@/lib/piano-audio"
+import { SynthPianoEngine, createPianoVoiceProfile } from "@/lib/piano-audio"
 
 describe("SynthPianoEngine", () => {
   test("resumes the interactive audio context before starting a note", async () => {
@@ -21,7 +21,7 @@ describe("SynthPianoEngine", () => {
   })
 
   test("defers note release until sustain is lifted", async () => {
-    const release = mock(() => {})
+    const release = mock((_kind?: string) => {})
     const context = {
       currentTime: 2,
       resume: async () => {},
@@ -40,7 +40,25 @@ describe("SynthPianoEngine", () => {
 
     engine.setSustain(false)
 
-    expect(release).toHaveBeenCalledTimes(1)
+    expect(release).toHaveBeenCalledWith("pedal")
+  })
+
+  test("uses normal damping when a key is released without sustain", async () => {
+    const release = mock((_kind?: string) => {})
+    const context = {
+      currentTime: 2,
+      resume: async () => {},
+      state: "running",
+    } as unknown as AudioContext
+    const engine = new SynthPianoEngine(
+      () => context,
+      () => ({ release }),
+    )
+
+    await engine.noteOn(60, 0.68)
+    engine.noteOff(60)
+
+    expect(release).toHaveBeenCalledWith("key")
   })
 
   test("does not start a stale voice when keyup wins the resume race", async () => {
@@ -137,5 +155,40 @@ describe("SynthPianoEngine", () => {
     expect(createVoice).toHaveBeenNthCalledWith(1, context, 60, 0.68, false)
     expect(createVoice).toHaveBeenNthCalledWith(2, context, 64, 0.68, true)
     expect(setMuted.mock.calls).toEqual([[true], [false], [false]])
+  })
+})
+
+describe("piano voice profile", () => {
+  test("keeps middle C ringing for a grand-piano-length natural tail", () => {
+    const profile = createPianoVoiceProfile(60, 0.68)
+
+    expect(profile.naturalDuration).toBeGreaterThanOrEqual(8)
+    expect(profile.partials[0].decay).toBe(profile.naturalDuration)
+  })
+
+  test("lets bass strings ring longer than treble strings", () => {
+    const bass = createPianoVoiceProfile(36, 0.68)
+    const treble = createPianoVoiceProfile(84, 0.68)
+
+    expect(bass.naturalDuration).toBeGreaterThan(treble.naturalDuration)
+    expect(bass.pedalRelease).toBeGreaterThan(treble.pedalRelease)
+  })
+
+  test("models slightly detuned strings and inharmonic upper partials with sine waves", () => {
+    const profile = createPianoVoiceProfile(60, 0.68)
+    const fundamentals = profile.partials.filter((partial) => partial.harmonic === 1)
+    const thirdHarmonic = profile.partials.find((partial) => partial.harmonic === 3)
+
+    expect(fundamentals.length).toBeGreaterThanOrEqual(2)
+    expect(fundamentals.some((partial) => partial.detune < 0)).toBeTrue()
+    expect(fundamentals.some((partial) => partial.detune > 0)).toBeTrue()
+    expect(thirdHarmonic?.detune).toBeGreaterThan(0)
+    expect(profile.partials.every((partial) => partial.type === "sine")).toBeTrue()
+  })
+
+  test("damps a pedal tail more gently than a normal key release", () => {
+    const profile = createPianoVoiceProfile(60, 0.68)
+
+    expect(profile.pedalRelease).toBeGreaterThan(profile.keyRelease)
   })
 })
