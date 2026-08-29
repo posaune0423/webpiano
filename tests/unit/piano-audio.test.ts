@@ -252,6 +252,93 @@ describe("piano voice profile", () => {
 
     expect(profile.pedalRelease).toBeGreaterThan(profile.keyRelease)
   })
+
+  test("softens the treble above the middle register", () => {
+    const middle = createPianoVoiceProfile(60, 0.68)
+    const treble = createPianoVoiceProfile(79, 0.68)
+    const upperPartialRatio = (profile: typeof middle) => {
+      const fundamentals = profile.partials
+        .filter((partial) => partial.harmonic === 1)
+        .reduce((total, partial) => total + partial.gain, 0)
+      const upperPartials = profile.partials
+        .filter((partial) => partial.harmonic >= 3)
+        .reduce((total, partial) => total + partial.gain, 0)
+
+      return upperPartials / fundamentals
+    }
+
+    expect(treble.filterFrequency).toBeLessThan(middle.filterFrequency)
+    expect(treble.filterFrequency).toBeGreaterThanOrEqual(6_800)
+    expect(treble.filterFrequency).toBeLessThanOrEqual(7_500)
+    expect(treble.filterQ).toBeLessThan(middle.filterQ)
+    expect(treble.hammerGain).toBeLessThan(middle.hammerGain)
+    expect(upperPartialRatio(treble)).toBeLessThan(upperPartialRatio(middle))
+    expect(upperPartialRatio(treble)).toBeLessThanOrEqual(0.21)
+  })
+
+  test("omits treble partials above the mild acoustic ceiling", () => {
+    const trebleMidi = 96
+    const treble = createPianoVoiceProfile(trebleMidi, 0.68)
+    const fundamental = 440 * 2 ** ((trebleMidi - 69) / 12)
+
+    expect(treble.partials.every((partial) => fundamental * partial.harmonic <= 10_000)).toBeTrue()
+  })
+
+  test("gives the bass more low-mid core with less string beating", () => {
+    const bass = createPianoVoiceProfile(48, 0.68)
+    const middle = createPianoVoiceProfile(60, 0.68)
+    const coreRatio = (profile: typeof bass) => {
+      const fundamental = profile.partials
+        .filter((partial) => partial.harmonic === 1)
+        .reduce((total, partial) => total + partial.gain, 0)
+      const core = profile.partials
+        .filter((partial) => partial.harmonic === 2 || partial.harmonic === 3)
+        .reduce((total, partial) => total + partial.gain, 0)
+
+      return core / fundamental
+    }
+    const detuneSpread = (profile: typeof bass) => {
+      const fundamentals = profile.partials.filter((partial) => partial.harmonic === 1)
+      return (
+        Math.max(...fundamentals.map((partial) => partial.detune)) -
+        Math.min(...fundamentals.map((partial) => partial.detune))
+      )
+    }
+    const coreTailRatio = (profile: typeof bass) => {
+      const fundamentals = profile.partials.filter((partial) => partial.harmonic === 1)
+      const corePartials = profile.partials.filter(
+        (partial) => partial.harmonic === 2 || partial.harmonic === 3,
+      )
+      const fundamentalTail = fundamentals.reduce(
+        (total, partial) => total + partial.gain * partial.tailLevel,
+        0,
+      )
+      const coreTail = corePartials.reduce(
+        (total, partial) => total + partial.gain * partial.tailLevel,
+        0,
+      )
+
+      return coreTail / fundamentalTail
+    }
+    const totalGain = (profile: typeof bass) =>
+      profile.partials.reduce((total, partial) => total + partial.gain, 0)
+
+    expect(coreRatio(bass)).toBeGreaterThan(coreRatio(middle))
+    expect(coreRatio(bass)).toBeGreaterThanOrEqual(0.42)
+    expect(coreTailRatio(bass)).toBeGreaterThanOrEqual(0.27)
+    expect(detuneSpread(bass)).toBeLessThan(detuneSpread(middle))
+    expect(detuneSpread(bass)).toBeLessThanOrEqual(1.4)
+    expect(bass.hammerGain).toBeGreaterThan(middle.hammerGain)
+    expect(totalGain(bass)).toBeLessThanOrEqual(totalGain(middle) * 1.05)
+  })
+
+  test("keeps the approved middle-register profile unchanged", () => {
+    const middle = createPianoVoiceProfile(60, 0.68)
+
+    expect(middle.filterFrequency).toBe(8_180)
+    expect(middle.filterQ).toBe(0.7)
+    expect(middle.hammerGain).toBeCloseTo(0.68 * 0.055, 8)
+  })
 })
 
 describe("piano release envelope", () => {

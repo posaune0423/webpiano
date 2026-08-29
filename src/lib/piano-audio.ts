@@ -34,7 +34,12 @@ interface PianoPartial {
 }
 
 export interface PianoVoiceProfile {
+  bodyFrequency: number
+  bodyGain: number
   filterFrequency: number
+  filterQ: number
+  hammerFrequency: number
+  hammerGain: number
   keyRelease: number
   naturalDuration: number
   partials: PianoPartial[]
@@ -64,33 +69,69 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value))
 }
 
+function bassPartialGain(harmonic: number, bass: number): number {
+  if (harmonic === 1) return 1 - bass * 0.05
+  if (harmonic === 2) return 1 + bass * 0.25
+  if (harmonic === 3) return 1 + bass * 0.3
+  if (harmonic === 4) return 1 + bass * 0.08
+  return 1
+}
+
+function bassTailLevel(harmonic: number, bass: number): number {
+  if (harmonic === 2) return 1 + bass * 0.2
+  if (harmonic === 3) return 1 + bass * 0.25
+  return 1
+}
+
+function treblePartialGain(harmonic: number, treble: number): number {
+  if (harmonic === 1) return 1
+  if (harmonic === 2) return 1 - treble * 0.15
+  return 1 - treble * 0.4
+}
+
 export function createPianoVoiceProfile(midi: number, velocity: number): PianoVoiceProfile {
   const register = clamp((midi - 21) / (108 - 21), 0, 1)
+  const bass = clamp((60 - midi) / 12, 0, 1)
+  const treble = clamp((midi - 64) / 20, 0, 1)
+  const frequency = midiToFrequency(midi)
+  const velocityLevel = clamp(velocity, 0, 1)
   const velocityGain = Math.pow(clamp(velocity, 0, 1), 1.25)
   const naturalDuration = 12.5 - 7.4 * Math.pow(register, 0.72)
-  const stringDetune = 0.65 + register * 0.85
-  const inharmonicity = 0.00008 + register * 0.00022
+  const stringDetune = (0.65 + register * 0.85) * (1 - bass * 0.3) * (1 - treble * 0.2)
+  const inharmonicity = (0.00008 + register * 0.00022) * (1 - treble * 0.2)
+  const openFilterFrequency = Math.min(8_200, 4_200 + midi * 55 + velocityLevel * 1_000)
+  const hammerFrequency = Math.min(6_000, 1_800 + frequency * 4)
 
   return {
-    filterFrequency: Math.min(11_000, 4_200 + midi * 55 + velocity * 1_000),
+    bodyFrequency: 240 + bass * 60 + treble * 140,
+    bodyGain: 2.2 + bass * 0.5 - treble,
+    filterFrequency: openFilterFrequency - treble * 1_400,
+    filterQ: 0.7 - treble * 0.16,
+    hammerFrequency: (hammerFrequency + bass * 400) * (1 - treble * 0.1),
+    hammerGain: velocityLevel * (0.055 + bass * 0.008) * (1 - treble * 0.35),
     keyRelease: 1.05 - register * 0.68,
     naturalDuration,
-    partials: PARTIAL_TEMPLATES.map((partial) => {
-      const stretchedRatio = Math.sqrt(
-        partial.harmonic ** 2 + inharmonicity * partial.harmonic ** 4,
-      )
-      const stretchedDetune = 1_200 * Math.log2(stretchedRatio / partial.harmonic)
+    partials: PARTIAL_TEMPLATES.filter((partial) => frequency * partial.harmonic <= 10_000).map(
+      (partial) => {
+        const stretchedRatio = Math.sqrt(
+          partial.harmonic ** 2 + inharmonicity * partial.harmonic ** 4,
+        )
+        const stretchedDetune = 1_200 * Math.log2(stretchedRatio / partial.harmonic)
+        const bassGain = bassPartialGain(partial.harmonic, bass)
+        const trebleGain = treblePartialGain(partial.harmonic, treble)
+        const coreTail = bassTailLevel(partial.harmonic, bass)
 
-      return {
-        attack: Math.max(0.002, 0.0052 - partial.harmonic * 0.00035),
-        decay: naturalDuration * partial.decayRatio,
-        detune: stretchedDetune + partial.detuneDirection * stringDetune,
-        gain: partial.gain * velocityGain,
-        harmonic: partial.harmonic,
-        tailLevel: partial.tailLevel,
-        type: "sine" as const,
-      }
-    }),
+        return {
+          attack: Math.max(0.002, 0.0052 - partial.harmonic * 0.00035),
+          decay: naturalDuration * partial.decayRatio,
+          detune: stretchedDetune + partial.detuneDirection * stringDetune,
+          gain: partial.gain * velocityGain * bassGain * trebleGain,
+          harmonic: partial.harmonic,
+          tailLevel: partial.tailLevel * coreTail,
+          type: "sine" as const,
+        }
+      },
+    ),
     pedalRelease: 1.75 - register,
   }
 }
@@ -122,11 +163,11 @@ function createWebAudioVoice(
 
   filter.type = "lowpass"
   filter.frequency.setValueAtTime(profile.filterFrequency, now)
-  filter.Q.setValueAtTime(0.7, now)
+  filter.Q.setValueAtTime(profile.filterQ, now)
   body.type = "peaking"
-  body.frequency.setValueAtTime(240, now)
+  body.frequency.setValueAtTime(profile.bodyFrequency, now)
   body.Q.setValueAtTime(0.75, now)
-  body.gain.setValueAtTime(2.2, now)
+  body.gain.setValueAtTime(profile.bodyGain, now)
   emergencyEnvelope.gain.setValueAtTime(1, now)
   output.gain.setValueAtTime(muted ? 0 : 0.74, now)
   releaseEnvelope.gain.setValueAtTime(1, now)
@@ -176,9 +217,9 @@ function createWebAudioVoice(
 
   hammer.buffer = hammerBuffer
   hammerFilter.type = "bandpass"
-  hammerFilter.frequency.setValueAtTime(Math.min(9_000, 1_800 + frequency * 4), now)
+  hammerFilter.frequency.setValueAtTime(profile.hammerFrequency, now)
   hammerFilter.Q.setValueAtTime(0.8, now)
-  hammerGain.gain.setValueAtTime(Math.max(0.0001, velocity * 0.055), now)
+  hammerGain.gain.setValueAtTime(Math.max(0.0001, profile.hammerGain), now)
   hammerGain.gain.exponentialRampToValueAtTime(0.0001, now + hammerDuration)
   hammer.connect(hammerFilter)
   hammerFilter.connect(hammerGain)
