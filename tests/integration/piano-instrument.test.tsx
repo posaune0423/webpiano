@@ -50,12 +50,8 @@ describe("PianoInstrument", () => {
     })
     expect(movementGuide.textContent).toContain("Move range")
     expect(movementGuide.querySelectorAll('[data-slot="kbd"]')).toHaveLength(2)
-    const pedalStatus = screen.getByRole("note", {
-      name: "Pedal off. Press Space to turn the sustain pedal on or off",
-    })
-    expect(pedalStatus.textContent).toBe("Pedal off")
-    expect(pedalStatus.getAttribute("data-pedal-active")).toBe("false")
-    expect(pedalStatus.getAttribute("data-pedal-source")).toBe("none")
+    expect(screen.queryByText("Pedal off")).toBeNull()
+    expect(screen.getByRole("main").querySelector("[data-pedal-status]")).toBeNull()
     expect(screen.queryByRole("button", { name: /semitone (down|up)/ })).toBeNull()
     expect(screen.getByRole("group", { name: "Keyboard mode" })).toBeTruthy()
     const singleMode = screen.getByRole("button", { name: "Single keyboard" })
@@ -361,12 +357,6 @@ describe("PianoInstrument", () => {
     fireEvent.pointerUp(key, { pointerId: 7 })
     fireEvent.keyDown(window, { code: "Space", repeat: false })
     expect(screen.getByRole("status", { name: "Sustain locked" })).toBeTruthy()
-    const lockedStatus = screen.getByRole("note", {
-      name: "Pedal on from Sustain Lock. Press Space to turn the sustain pedal on or off",
-    })
-    expect(lockedStatus.textContent).toBe("Pedal on · Lock")
-    expect(lockedStatus.getAttribute("data-pedal-active")).toBe("true")
-    expect(lockedStatus.getAttribute("data-pedal-source")).toBe("lock")
     expect(pedal.dataset.sustainActive).toBe("true")
     expect(pedal.dataset.sustainLocked).toBe("true")
     expect(pedal.querySelector('[data-pedal-lock="locked"]')).toBeTruthy()
@@ -386,11 +376,6 @@ describe("PianoInstrument", () => {
     expect(pedal.dataset.sustainActive).toBe("false")
     expect(pedal.dataset.sustainLocked).toBe("false")
     expect(pedal.querySelector('[data-pedal-lock="unlocked"]')).toBeTruthy()
-    expect(
-      screen.getByRole("note", {
-        name: "Pedal off. Press Space to turn the sustain pedal on or off",
-      }).textContent,
-    ).toBe("Pedal off")
 
     expect(noteOn).toHaveBeenCalledWith(60, 0.68)
     expect(noteOff).toHaveBeenCalledWith(60)
@@ -402,6 +387,15 @@ describe("PianoInstrument", () => {
     renderInstrument()
 
     fireEvent.click(screen.getByRole("button", { name: "Pedal" }))
+    const offStatus = screen.getByRole("note", { name: "Pedal status: off" })
+    expect(offStatus.textContent).toBe("Pedal off")
+    expect(offStatus.getAttribute("data-pedal-active")).toBe("false")
+    expect(offStatus.getAttribute("data-pedal-source")).toBe("none")
+    expect(
+      screen
+        .getByRole("menuitemcheckbox", { name: /Sustain lock/ })
+        .querySelector('[data-slot="kbd"]')?.textContent,
+    ).toBe("Space")
     await act(async () => {
       fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /Sustain lock/ }))
       await Promise.resolve()
@@ -410,6 +404,18 @@ describe("PianoInstrument", () => {
     const pedal = screen.getByRole("button", { name: "Pedal" })
     expect(pedal.dataset.sustainLocked).toBe("true")
     expect(screen.getByRole("status", { name: "Sustain locked" })).toBeTruthy()
+
+    await act(async () => {
+      fireEvent.click(pedal)
+      await Promise.resolve()
+    })
+    const lockStatus = screen.getByRole("note", { name: "Pedal status: on from Sustain Lock" })
+    expect(lockStatus.textContent).toBe("Pedal on · Lock")
+    expect(lockStatus.getAttribute("data-pedal-source")).toBe("lock")
+    await act(async () => {
+      fireEvent.keyDown(document, { key: "Escape" })
+      await Promise.resolve()
+    })
 
     fireEvent.keyDown(window, { code: "Space", repeat: false })
     expect(pedal.dataset.sustainLocked).toBe("false")

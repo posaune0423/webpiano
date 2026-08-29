@@ -97,12 +97,7 @@ test("opens directly into the responsive playable piano without page overflow", 
   })
   await expect(movementGuide).toContainText("Move range")
   await expect(movementGuide.locator('[data-slot="kbd"]')).toHaveCount(2)
-  const pedalStatus = main.getByRole("note", {
-    name: "Pedal off. Press Space to turn the sustain pedal on or off",
-  })
-  await expect(pedalStatus).toHaveText("Pedal off")
-  await expect(pedalStatus).toHaveAttribute("data-pedal-active", "false")
-  await expect(pedalStatus).toHaveAttribute("data-pedal-source", "none")
+  await expect(main.locator("[data-pedal-status]")).toHaveCount(0)
   await expect(main.getByRole("button", { name: /semitone (down|up)/ })).toHaveCount(0)
   await expect(main.getByRole("status", { name: /Sustain (on|off)/ })).toBeAttached()
   await expect(main.getByRole("status", { name: "Play a note to start audio" })).toBeAttached()
@@ -364,6 +359,10 @@ test("opens the pedal menu without shifting the instrument and locks sustain", a
 
   const sustainLock = page.getByRole("menuitemcheckbox", { name: /Sustain lock/ })
   await expect(sustainLock).toBeVisible()
+  const pedalStatus = page.getByRole("menu").getByRole("note", { name: "Pedal status: off" })
+  await expect(pedalStatus).toHaveText("Pedal off")
+  await expect(pedalStatus).toHaveAttribute("data-pedal-source", "none")
+  await expect(sustainLock.locator('[data-slot="kbd"]')).toHaveText("Space")
   await expect(page.getByRole("menuitem", { name: /Use phone as pedal/ })).toBeVisible()
   const after = await main.boundingBox()
   expect(after).toEqual(before)

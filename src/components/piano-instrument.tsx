@@ -103,48 +103,6 @@ function RangeMovementGuide({ instrumentMode }: { instrumentMode: InstrumentMode
   )
 }
 
-function PedalStatusGuide({
-  remotePedalDown,
-  sustainActive,
-  sustainLocked,
-}: {
-  remotePedalDown: boolean
-  sustainActive: boolean
-  sustainLocked: boolean
-}) {
-  const source = remotePedalDown ? "phone" : sustainLocked ? "lock" : "none"
-  const statusText = !sustainActive
-    ? "Pedal off"
-    : source === "phone"
-      ? "Pedal on · Phone"
-      : source === "lock"
-        ? "Pedal on · Lock"
-        : "Pedal on"
-  const accessibleLabel = !sustainActive
-    ? "Pedal off. Press Space to turn the sustain pedal on or off"
-    : source === "phone"
-      ? "Phone pedal is down. Space toggles Sustain Lock"
-      : source === "lock"
-        ? "Pedal on from Sustain Lock. Press Space to turn the sustain pedal on or off"
-        : "Pedal on. Press Space to turn the sustain pedal on or off"
-
-  return (
-    <div className="flex shrink-0 items-center gap-1.5" data-pedal-shortcut-guide="">
-      <Kbd aria-hidden="true">Space</Kbd>
-      <Badge
-        aria-label={accessibleLabel}
-        className="h-5 w-32"
-        data-pedal-active={sustainActive}
-        data-pedal-source={source}
-        role="note"
-        variant={sustainActive ? "secondary" : "outline"}
-      >
-        <span className="font-mono text-[0.625rem] tracking-[0.08em] uppercase">{statusText}</span>
-      </Badge>
-    </div>
-  )
-}
-
 function DualRangeIcon() {
   return (
     <svg
@@ -572,6 +530,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
 
           <div className="flex flex-wrap items-center justify-end gap-2">
             <PedalMenu
+              remotePedalDown={remotePedalDown}
               sustainActive={sustain}
               sustainLocked={sustainLocked}
               onPhonePedalChange={(down) => {
@@ -654,17 +613,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
                 </>
               )}
             </div>
-            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-              <PedalStatusGuide
-                remotePedalDown={remotePedalDown}
-                sustainActive={sustain}
-                sustainLocked={sustainLocked}
-              />
-              <span aria-hidden="true" className="text-muted-foreground">
-                ·
-              </span>
-              <RangeMovementGuide instrumentMode={instrumentMode} />
-            </div>
+            <RangeMovementGuide instrumentMode={instrumentMode} />
           </div>
 
           <div className="flex flex-wrap items-end justify-between gap-4 [@media(max-height:500px)]:hidden">
