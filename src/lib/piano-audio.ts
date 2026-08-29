@@ -49,16 +49,44 @@ export interface PianoVoiceProfile {
 
 interface PartialTemplate {
   decayRatio: number
-  detuneDirection: -1 | 0 | 1
+  detuneDirection: number
   gain: number
   harmonic: number
   phase: number
+  stringIndex?: 0 | 1 | 2
   tailLevel: number
+  trebleOnly?: boolean
 }
 
 const PARTIAL_TEMPLATES: PartialTemplate[] = [
-  { decayRatio: 1, detuneDirection: -1, gain: 0.34, harmonic: 1, phase: -0.5, tailLevel: 0.42 },
-  { decayRatio: 0.97, detuneDirection: 1, gain: 0.3, harmonic: 1, phase: 0.38, tailLevel: 0.4 },
+  {
+    decayRatio: 1,
+    detuneDirection: -1,
+    gain: 0.34,
+    harmonic: 1,
+    phase: -0.5,
+    stringIndex: 0,
+    tailLevel: 0.42,
+  },
+  {
+    decayRatio: 0.97,
+    detuneDirection: 1,
+    gain: 0.3,
+    harmonic: 1,
+    phase: 0.38,
+    stringIndex: 1,
+    tailLevel: 0.4,
+  },
+  {
+    decayRatio: 0.94,
+    detuneDirection: -0.12,
+    gain: 0,
+    harmonic: 1,
+    phase: 0.62,
+    stringIndex: 2,
+    tailLevel: 0.38,
+    trebleOnly: true,
+  },
   { decayRatio: 0.76, detuneDirection: 0, gain: 0.14, harmonic: 2, phase: 0.18, tailLevel: 0.26 },
   { decayRatio: 0.61, detuneDirection: 0, gain: 0.075, harmonic: 3, phase: -0.32, tailLevel: 0.18 },
   { decayRatio: 0.48, detuneDirection: 0, gain: 0.042, harmonic: 4, phase: 0.44, tailLevel: 0.13 },
@@ -85,10 +113,17 @@ function bassTailLevel(harmonic: number, bass: number): number {
   return 1
 }
 
+function fundamentalStringGain(stringIndex: 0 | 1 | 2, treble: number): number {
+  if (stringIndex === 0) return 0.34 + treble * (0.235 - 0.34)
+  if (stringIndex === 1) return 0.3 + treble * (0.215 - 0.3)
+  return treble * 0.19
+}
+
 function treblePartialGain(harmonic: number, treble: number): number {
-  if (harmonic === 1) return 1
-  if (harmonic === 2) return 1 - treble * 0.15
-  return 1 - treble * 0.4
+  if (harmonic <= 2) return 1
+  if (harmonic === 3) return 1 - treble * 0.2
+  if (harmonic === 4) return 1 - treble * 0.3
+  return 1 - treble * 0.5
 }
 
 export function createPianoVoiceProfile(midi: number, velocity: number): PianoVoiceProfile {
@@ -105,41 +140,45 @@ export function createPianoVoiceProfile(midi: number, velocity: number): PianoVo
   const hammerFrequency = Math.min(6_000, 1_800 + frequency * 4)
 
   return {
-    bodyFrequency: 240 + bass * 60 + treble * 140,
-    bodyGain: 2.2 + bass * 0.5 - treble,
+    bodyFrequency: 240 + bass * 60 + treble * 1_100,
+    bodyGain: 2.2 + bass * 0.5 - treble * 0.6,
     filterFrequency: openFilterFrequency - treble * 1_400,
     filterQ: 0.7 - treble * 0.16,
     hammerFrequency: (hammerFrequency + bass * 400) * (1 - treble * 0.1),
     hammerGain: velocityLevel * (0.055 + bass * 0.008) * (1 - treble * 0.35),
     keyRelease: 1.05 - register * 0.68,
     naturalDuration,
-    partials: PARTIAL_TEMPLATES.filter((partial) => frequency * partial.harmonic <= 10_000).map(
-      (partial) => {
-        const stretchedRatio = Math.sqrt(
-          partial.harmonic ** 2 + inharmonicity * partial.harmonic ** 4,
-        )
-        const stretchedDetune = 1_200 * Math.log2(stretchedRatio / partial.harmonic)
-        const bassGain = bassPartialGain(partial.harmonic, bass)
-        const trebleGain = treblePartialGain(partial.harmonic, treble)
-        const coreTail = bassTailLevel(partial.harmonic, bass)
-        const trebleTail = partial.harmonic === 2 || partial.harmonic === 3 ? 1 + treble * 0.4 : 1
-        const decayRatio =
-          partial.harmonic === 1 && partial.detuneDirection === 1
-            ? partial.decayRatio - treble * 0.07
-            : partial.decayRatio
+    partials: PARTIAL_TEMPLATES.filter(
+      (partial) => frequency * partial.harmonic <= 10_000 && (!partial.trebleOnly || treble > 0),
+    ).map((partial) => {
+      const stretchedRatio = Math.sqrt(
+        partial.harmonic ** 2 + inharmonicity * partial.harmonic ** 4,
+      )
+      const stretchedDetune = 1_200 * Math.log2(stretchedRatio / partial.harmonic)
+      const bassGain = bassPartialGain(partial.harmonic, bass)
+      const trebleGain = treblePartialGain(partial.harmonic, treble)
+      const coreTail = bassTailLevel(partial.harmonic, bass)
+      const templateGain =
+        partial.stringIndex === undefined
+          ? partial.gain
+          : fundamentalStringGain(partial.stringIndex, treble)
+      const trebleTail = partial.harmonic === 2 || partial.harmonic === 3 ? 1 + treble * 0.4 : 1
+      const decayRatio =
+        partial.harmonic === 1 && partial.detuneDirection === 1
+          ? partial.decayRatio - treble * 0.07
+          : partial.decayRatio
 
-        return {
-          attack: Math.max(0.002, 0.0052 - partial.harmonic * 0.00035),
-          decay: naturalDuration * decayRatio,
-          detune: stretchedDetune + partial.detuneDirection * stringDetune,
-          gain: partial.gain * velocityGain * bassGain * trebleGain,
-          harmonic: partial.harmonic,
-          phase: partial.phase * treble,
-          tailLevel: partial.tailLevel * coreTail * trebleTail,
-          type: "sine" as const,
-        }
-      },
-    ),
+      return {
+        attack: Math.max(0.002, 0.0052 - partial.harmonic * 0.00035),
+        decay: naturalDuration * decayRatio,
+        detune: stretchedDetune + partial.detuneDirection * stringDetune,
+        gain: templateGain * velocityGain * bassGain * trebleGain,
+        harmonic: partial.harmonic,
+        phase: partial.phase * treble,
+        tailLevel: partial.tailLevel * coreTail * trebleTail,
+        type: "sine" as const,
+      }
+    }),
     pedalRelease: 1.75 - register,
   }
 }

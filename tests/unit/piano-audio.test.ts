@@ -342,9 +342,7 @@ describe("piano voice profile", () => {
   })
 
   test("breaks up the phase-locked fundamental without shortening high sustain", () => {
-    const middle = createPianoVoiceProfile(60, 0.68)
     const treble = createPianoVoiceProfile(79, 0.68)
-    const middleFundamentals = middle.partials.filter((partial) => partial.harmonic === 1)
     const trebleFundamentals = treble.partials.filter((partial) => partial.harmonic === 1)
     const tailTargetTotal = treble.partials.reduce(
       (total, partial) => total + partial.gain * partial.tailLevel,
@@ -381,9 +379,9 @@ describe("piano voice profile", () => {
       Math.min(...trebleFundamentals.map((partial) => partial.decay))
 
     expect(treble.naturalDuration).toBeGreaterThanOrEqual(6.8)
-    expect(trebleFundamentals.map((partial) => partial.tailLevel)).toEqual(
-      middleFundamentals.map((partial) => partial.tailLevel),
-    )
+    expect(
+      trebleFundamentals.every((partial) => partial.tailLevel >= 0.36 && partial.tailLevel <= 0.42),
+    ).toBeTrue()
     expect(fundamentalShareAtTail).toBeLessThanOrEqual(0.83)
     expect(tailTargetTotal).toBeGreaterThanOrEqual(0.18)
     expect(fundamentalDecayDifference).toBeGreaterThanOrEqual(0.5)
@@ -392,9 +390,53 @@ describe("piano voice profile", () => {
     expect(detuneSpread).toBeLessThanOrEqual(1.4)
     expect(eighthPartial?.detune).toBeGreaterThanOrEqual(8.5)
     expect(eighthPartial?.detune).toBeLessThanOrEqual(9.5)
-    expect(new Set(trebleFundamentals.map((partial) => partial.phase)).size).toBe(2)
+    expect(new Set(trebleFundamentals.map((partial) => partial.phase)).size).toBe(
+      trebleFundamentals.length,
+    )
     expect(new Set(treble.partials.map((partial) => partial.phase)).size).toBeGreaterThan(2)
     expect(treble.partials.some((partial) => Math.abs(partial.phase) > 0.1)).toBeTrue()
+  })
+
+  test("adds acoustic richness without restoring harsh treble partials", () => {
+    const trebleMidi = 79
+    const middle = createPianoVoiceProfile(60, 0.68)
+    const treble = createPianoVoiceProfile(trebleMidi, 0.68)
+    const gainFor = (profile: typeof treble, predicate: (harmonic: number) => boolean) =>
+      profile.partials
+        .filter((partial) => predicate(partial.harmonic))
+        .reduce((total, partial) => total + partial.gain, 0)
+    const middleFundamentalGain = gainFor(middle, (harmonic) => harmonic === 1)
+    const trebleFundamentalGain = gainFor(treble, (harmonic) => harmonic === 1)
+    const trebleCoreGain = gainFor(treble, (harmonic) => harmonic === 2 || harmonic === 3)
+    const trebleHighGain = gainFor(treble, (harmonic) => harmonic >= 5)
+    const trebleFundamentals = treble.partials.filter((partial) => partial.harmonic === 1)
+    const fundamentalFrequency = 440 * 2 ** ((trebleMidi - 69) / 12)
+    const beatFrequencies = trebleFundamentals
+      .flatMap((left, leftIndex) =>
+        trebleFundamentals
+          .slice(leftIndex + 1)
+          .map((right) =>
+            Math.abs(
+              fundamentalFrequency * 2 ** (left.detune / 1_200) -
+                fundamentalFrequency * 2 ** (right.detune / 1_200),
+            ),
+          ),
+      )
+      .sort((left, right) => left - right)
+    const sortedDecays = trebleFundamentals
+      .map((partial) => partial.decay)
+      .sort((left, right) => left - right)
+    const decayIntervals = sortedDecays.slice(1).map((decay, index) => decay - sortedDecays[index])
+
+    expect(trebleFundamentals).toHaveLength(3)
+    expect(trebleFundamentalGain).toBeCloseTo(middleFundamentalGain, 8)
+    expect(trebleCoreGain / trebleFundamentalGain).toBeGreaterThanOrEqual(0.31)
+    expect(trebleHighGain / trebleFundamentalGain).toBeLessThanOrEqual(0.06)
+    expect(beatFrequencies[1] - beatFrequencies[0]).toBeGreaterThanOrEqual(0.05)
+    expect(Math.min(...decayIntervals)).toBeGreaterThanOrEqual(0.1)
+    expect(treble.bodyFrequency).toBeGreaterThanOrEqual(900)
+    expect(treble.bodyFrequency).toBeLessThanOrEqual(1_200)
+    expect(treble.bodyGain).toBeGreaterThanOrEqual(1.7)
   })
 })
 
