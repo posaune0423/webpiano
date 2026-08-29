@@ -30,6 +30,12 @@ test("pairs a phone pedal and applies sustain over WebRTC", async ({ browser, pa
     await phone.mouse.down()
 
     await expect(page.getByRole("status", { name: "Sustain on" })).toBeVisible()
+    const phonePedalStatus = page.getByRole("note", {
+      name: "Phone pedal is down. Space toggles Sustain Lock",
+    })
+    await expect(phonePedalStatus).toHaveText("Pedal on · Phone")
+    await expect(phonePedalStatus).toHaveAttribute("data-pedal-active", "true")
+    await expect(phonePedalStatus).toHaveAttribute("data-pedal-source", "phone")
 
     const c3 = page.getByRole("button", { name: "Play C3 with Z" })
     await page.keyboard.down("z")
@@ -38,10 +44,30 @@ test("pairs a phone pedal and applies sustain over WebRTC", async ({ browser, pa
     await expect(c3).toHaveAttribute("aria-pressed", "false")
     await expect(page.getByRole("status", { name: "Sustain on" })).toBeVisible()
 
+    await page.evaluate(() => window.dispatchEvent(new Event("blur")))
+    await expect(
+      page.getByRole("note", {
+        name: "Pedal off. Press Space to turn the sustain pedal on or off",
+      }),
+    ).toHaveText("Pedal off")
+
+    await page.keyboard.press("Space")
+    const lockedPedalStatus = page.getByRole("note", {
+      name: "Pedal on from Sustain Lock. Press Space to turn the sustain pedal on or off",
+    })
+    await expect(lockedPedalStatus).toHaveText("Pedal on · Lock")
+
     await phone.mouse.up()
+    await expect(lockedPedalStatus).toHaveText("Pedal on · Lock")
+    await page.keyboard.press("Space")
     await expect(
       page.getByRole("status", { name: "Sustain off — press Space or use phone pedal" }),
     ).toBeVisible()
+    await expect(
+      page.getByRole("note", {
+        name: "Pedal off. Press Space to turn the sustain pedal on or off",
+      }),
+    ).toHaveText("Pedal off")
   } finally {
     await phoneContext.close()
   }

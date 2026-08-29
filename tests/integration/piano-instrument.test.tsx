@@ -50,11 +50,12 @@ describe("PianoInstrument", () => {
     })
     expect(movementGuide.textContent).toContain("Move range")
     expect(movementGuide.querySelectorAll('[data-slot="kbd"]')).toHaveLength(2)
-    const pedalGuide = screen.getByRole("note", {
-      name: "Press Space to turn the sustain pedal on or off",
+    const pedalStatus = screen.getByRole("note", {
+      name: "Pedal off. Press Space to turn the sustain pedal on or off",
     })
-    expect(pedalGuide.textContent).toContain("Pedal on/off")
-    expect(pedalGuide.querySelector('[data-slot="kbd"]')?.textContent).toBe("Space")
+    expect(pedalStatus.textContent).toBe("Pedal off")
+    expect(pedalStatus.getAttribute("data-pedal-active")).toBe("false")
+    expect(pedalStatus.getAttribute("data-pedal-source")).toBe("none")
     expect(screen.queryByRole("button", { name: /semitone (down|up)/ })).toBeNull()
     expect(screen.getByRole("group", { name: "Keyboard mode" })).toBeTruthy()
     const singleMode = screen.getByRole("button", { name: "Single keyboard" })
@@ -360,6 +361,12 @@ describe("PianoInstrument", () => {
     fireEvent.pointerUp(key, { pointerId: 7 })
     fireEvent.keyDown(window, { code: "Space", repeat: false })
     expect(screen.getByRole("status", { name: "Sustain locked" })).toBeTruthy()
+    const lockedStatus = screen.getByRole("note", {
+      name: "Pedal on from Sustain Lock. Press Space to turn the sustain pedal on or off",
+    })
+    expect(lockedStatus.textContent).toBe("Pedal on · Lock")
+    expect(lockedStatus.getAttribute("data-pedal-active")).toBe("true")
+    expect(lockedStatus.getAttribute("data-pedal-source")).toBe("lock")
     expect(pedal.dataset.sustainActive).toBe("true")
     expect(pedal.dataset.sustainLocked).toBe("true")
     expect(pedal.querySelector('[data-pedal-lock="locked"]')).toBeTruthy()
@@ -379,6 +386,11 @@ describe("PianoInstrument", () => {
     expect(pedal.dataset.sustainActive).toBe("false")
     expect(pedal.dataset.sustainLocked).toBe("false")
     expect(pedal.querySelector('[data-pedal-lock="unlocked"]')).toBeTruthy()
+    expect(
+      screen.getByRole("note", {
+        name: "Pedal off. Press Space to turn the sustain pedal on or off",
+      }).textContent,
+    ).toBe("Pedal off")
 
     expect(noteOn).toHaveBeenCalledWith(60, 0.68)
     expect(noteOff).toHaveBeenCalledWith(60)

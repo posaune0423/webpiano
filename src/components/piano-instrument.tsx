@@ -103,16 +103,44 @@ function RangeMovementGuide({ instrumentMode }: { instrumentMode: InstrumentMode
   )
 }
 
-function PedalShortcutGuide() {
+function PedalStatusGuide({
+  remotePedalDown,
+  sustainActive,
+  sustainLocked,
+}: {
+  remotePedalDown: boolean
+  sustainActive: boolean
+  sustainLocked: boolean
+}) {
+  const source = remotePedalDown ? "phone" : sustainLocked ? "lock" : "none"
+  const statusText = !sustainActive
+    ? "Pedal off"
+    : source === "phone"
+      ? "Pedal on · Phone"
+      : source === "lock"
+        ? "Pedal on · Lock"
+        : "Pedal on"
+  const accessibleLabel = !sustainActive
+    ? "Pedal off. Press Space to turn the sustain pedal on or off"
+    : source === "phone"
+      ? "Phone pedal is down. Space toggles Sustain Lock"
+      : source === "lock"
+        ? "Pedal on from Sustain Lock. Press Space to turn the sustain pedal on or off"
+        : "Pedal on. Press Space to turn the sustain pedal on or off"
+
   return (
-    <div
-      aria-label="Press Space to turn the sustain pedal on or off"
-      className="flex shrink-0 items-center gap-1.5 font-mono text-[0.625rem] tracking-[0.08em] text-muted-foreground uppercase"
-      data-pedal-shortcut-guide=""
-      role="note"
-    >
+    <div className="flex shrink-0 items-center gap-1.5" data-pedal-shortcut-guide="">
       <Kbd aria-hidden="true">Space</Kbd>
-      <span>Pedal on/off</span>
+      <Badge
+        aria-label={accessibleLabel}
+        className="h-5 w-32"
+        data-pedal-active={sustainActive}
+        data-pedal-source={source}
+        role="note"
+        variant={sustainActive ? "secondary" : "outline"}
+      >
+        <span className="font-mono text-[0.625rem] tracking-[0.08em] uppercase">{statusText}</span>
+      </Badge>
     </div>
   )
 }
@@ -198,6 +226,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
   const [instrumentMode, setInstrumentMode] = useState<InstrumentMode>("standard")
   const [lowerStartMidi, setLowerStartMidi] = useState(DEFAULT_LOWER_START_MIDI)
   const [muted, setMuted] = useState(false)
+  const [remotePedalDown, setRemotePedalDown] = useState(false)
   const [standardStartMidi, setStandardStartMidi] = useState(DEFAULT_LOWER_START_MIDI)
   const [sustain, setSustainState] = useState(false)
   const [sustainLocked, setSustainLocked] = useState(false)
@@ -305,6 +334,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
     if (updateVisualState) {
       sustainSources.current?.clearAll()
       sustainLockedRef.current = false
+      setRemotePedalDown(false)
       setSustainLocked(false)
     }
 
@@ -544,7 +574,10 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
             <PedalMenu
               sustainActive={sustain}
               sustainLocked={sustainLocked}
-              onPhonePedalChange={(down) => setSustain("remote-pedal", down)}
+              onPhonePedalChange={(down) => {
+                setRemotePedalDown(down)
+                setSustain("remote-pedal", down)
+              }}
               onSustainLockChange={(enabled) => {
                 setManualSustainLock(enabled)
               }}
@@ -622,7 +655,11 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
               )}
             </div>
             <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-              <PedalShortcutGuide />
+              <PedalStatusGuide
+                remotePedalDown={remotePedalDown}
+                sustainActive={sustain}
+                sustainLocked={sustainLocked}
+              />
               <span aria-hidden="true" className="text-muted-foreground">
                 ·
               </span>
