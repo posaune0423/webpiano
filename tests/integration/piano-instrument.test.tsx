@@ -9,7 +9,7 @@ import { PedalApiProvider } from "@/trpc/client"
 const noteOn = mock(async () => {})
 const noteOff = mock(() => {})
 const setMuted = mock((_muted: boolean) => {})
-const setSustain = mock(() => {})
+const setSustain = mock((_enabled: boolean) => {})
 const allNotesOff = mock(() => {})
 
 function renderInstrument() {
@@ -190,7 +190,7 @@ describe("PianoInstrument", () => {
     expect(screen.getByRole("status", { name: "Upper range" }).textContent).toBe("C4–G5")
   })
 
-  test("clears sounding notes but preserves an intentional Sustain Lock across layouts", () => {
+  test("clears sounding notes and reapplies an intentional Sustain Lock across layouts", () => {
     renderInstrument()
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
     fireEvent.keyDown(window, { code: "Space", repeat: false })
@@ -199,7 +199,19 @@ describe("PianoInstrument", () => {
 
     expect(allNotesOff).toHaveBeenCalledTimes(1)
     expect(setSustain).toHaveBeenNthCalledWith(1, true)
-    expect(setSustain).toHaveBeenCalledTimes(1)
+    expect(setSustain).toHaveBeenNthCalledWith(2, true)
+    expect(screen.getByRole("status", { name: "Sustain locked" })).toBeTruthy()
+  })
+
+  test("reapplies Sustain Lock after moving the playable range", () => {
+    renderInstrument()
+    fireEvent.keyDown(window, { code: "Space", repeat: false })
+
+    fireEvent.click(screen.getByRole("button", { name: "Standard semitone down" }))
+
+    expect(screen.getByRole("status", { name: "Standard range" }).textContent).toBe("B2–F♯5")
+    expect(allNotesOff).toHaveBeenCalledTimes(1)
+    expect(setSustain.mock.calls).toEqual([[true], [true]])
     expect(screen.getByRole("status", { name: "Sustain locked" })).toBeTruthy()
   })
 

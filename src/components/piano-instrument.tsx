@@ -217,7 +217,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
     sustainSources.current?.set(source, enabled)
   }, [])
 
-  const resetInstrument = useCallback((updateVisualState: boolean, preserveManualLock = false) => {
+  const resetInstrument = useCallback((updateVisualState: boolean, preserveSustain = false) => {
     for (const timer of activationTimers.current.values()) {
       window.clearTimeout(timer)
     }
@@ -226,19 +226,18 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
     noteSources.current.clear()
     pointerNotes.current.clear()
     pressedCodes.current.clear()
-    if (updateVisualState) {
-      if (preserveManualLock) {
-        sustainSources.current?.clear("keyboard")
-        sustainSources.current?.clear("remote-pedal")
-      } else {
-        sustainSources.current?.clearAll()
-        sustainLockedRef.current = false
-        setSustainLocked(false)
-      }
+    if (updateVisualState && !preserveSustain) {
+      sustainSources.current?.clearAll()
+      sustainLockedRef.current = false
+      setSustainLocked(false)
     }
 
     if (engineStarted.current) {
-      getPianoAudioEngine().allNotesOff()
+      const engine = getPianoAudioEngine()
+      engine.allNotesOff()
+      if (preserveSustain && sustainSources.current?.active) {
+        engine.setSustain(true)
+      }
     }
 
     if (updateVisualState) {
