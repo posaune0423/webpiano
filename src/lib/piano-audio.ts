@@ -29,6 +29,7 @@ interface PianoPartial {
   detune: number
   gain: number
   harmonic: number
+  phase: number
   tailLevel: number
   type: OscillatorType
 }
@@ -51,18 +52,19 @@ interface PartialTemplate {
   detuneDirection: -1 | 0 | 1
   gain: number
   harmonic: number
+  phase: number
   tailLevel: number
 }
 
 const PARTIAL_TEMPLATES: PartialTemplate[] = [
-  { decayRatio: 1, detuneDirection: -1, gain: 0.34, harmonic: 1, tailLevel: 0.42 },
-  { decayRatio: 0.97, detuneDirection: 1, gain: 0.3, harmonic: 1, tailLevel: 0.4 },
-  { decayRatio: 0.76, detuneDirection: 0, gain: 0.14, harmonic: 2, tailLevel: 0.26 },
-  { decayRatio: 0.61, detuneDirection: 0, gain: 0.075, harmonic: 3, tailLevel: 0.18 },
-  { decayRatio: 0.48, detuneDirection: 0, gain: 0.042, harmonic: 4, tailLevel: 0.13 },
-  { decayRatio: 0.37, detuneDirection: 0, gain: 0.026, harmonic: 5, tailLevel: 0.09 },
-  { decayRatio: 0.29, detuneDirection: 0, gain: 0.017, harmonic: 6, tailLevel: 0.065 },
-  { decayRatio: 0.2, detuneDirection: 0, gain: 0.01, harmonic: 8, tailLevel: 0.04 },
+  { decayRatio: 1, detuneDirection: -1, gain: 0.34, harmonic: 1, phase: -0.5, tailLevel: 0.42 },
+  { decayRatio: 0.97, detuneDirection: 1, gain: 0.3, harmonic: 1, phase: 0.38, tailLevel: 0.4 },
+  { decayRatio: 0.76, detuneDirection: 0, gain: 0.14, harmonic: 2, phase: 0.18, tailLevel: 0.26 },
+  { decayRatio: 0.61, detuneDirection: 0, gain: 0.075, harmonic: 3, phase: -0.32, tailLevel: 0.18 },
+  { decayRatio: 0.48, detuneDirection: 0, gain: 0.042, harmonic: 4, phase: 0.44, tailLevel: 0.13 },
+  { decayRatio: 0.37, detuneDirection: 0, gain: 0.026, harmonic: 5, phase: -0.24, tailLevel: 0.09 },
+  { decayRatio: 0.29, detuneDirection: 0, gain: 0.017, harmonic: 6, phase: 0.34, tailLevel: 0.065 },
+  { decayRatio: 0.2, detuneDirection: 0, gain: 0.01, harmonic: 8, phase: -0.42, tailLevel: 0.04 },
 ]
 
 function clamp(value: number, minimum: number, maximum: number): number {
@@ -97,8 +99,8 @@ export function createPianoVoiceProfile(midi: number, velocity: number): PianoVo
   const velocityLevel = clamp(velocity, 0, 1)
   const velocityGain = Math.pow(clamp(velocity, 0, 1), 1.25)
   const naturalDuration = 12.5 - 7.4 * Math.pow(register, 0.72)
-  const stringDetune = (0.65 + register * 0.85) * (1 - bass * 0.3) * (1 - treble * 0.2)
-  const inharmonicity = (0.00008 + register * 0.00022) * (1 - treble * 0.2)
+  const stringDetune = (0.65 + register * 0.85) * (1 - bass * 0.3) * (1 - treble * 0.62)
+  const inharmonicity = (0.00008 + register * 0.00022) * (1 - treble * 0.38)
   const openFilterFrequency = Math.min(8_200, 4_200 + midi * 55 + velocityLevel * 1_000)
   const hammerFrequency = Math.min(6_000, 1_800 + frequency * 4)
 
@@ -120,14 +122,20 @@ export function createPianoVoiceProfile(midi: number, velocity: number): PianoVo
         const bassGain = bassPartialGain(partial.harmonic, bass)
         const trebleGain = treblePartialGain(partial.harmonic, treble)
         const coreTail = bassTailLevel(partial.harmonic, bass)
+        const trebleTail = partial.harmonic === 2 || partial.harmonic === 3 ? 1 + treble * 0.4 : 1
+        const decayRatio =
+          partial.harmonic === 1 && partial.detuneDirection === 1
+            ? partial.decayRatio - treble * 0.07
+            : partial.decayRatio
 
         return {
           attack: Math.max(0.002, 0.0052 - partial.harmonic * 0.00035),
-          decay: naturalDuration * partial.decayRatio,
+          decay: naturalDuration * decayRatio,
           detune: stretchedDetune + partial.detuneDirection * stringDetune,
           gain: partial.gain * velocityGain * bassGain * trebleGain,
           harmonic: partial.harmonic,
-          tailLevel: partial.tailLevel * coreTail,
+          phase: partial.phase * treble,
+          tailLevel: partial.tailLevel * coreTail * trebleTail,
           type: "sine" as const,
         }
       },
@@ -184,8 +192,19 @@ function createWebAudioVoice(
     const tailAt = Math.min(partial.decay * 0.28, 1.4)
     const tailGain = Math.max(0.0001, peak * partial.tailLevel)
 
-    oscillator.type = partial.type
-    oscillator.frequency.setValueAtTime(frequency * partial.harmonic, now)
+    if (partial.phase === 0) {
+      oscillator.type = partial.type
+      oscillator.frequency.setValueAtTime(frequency * partial.harmonic, now)
+    } else {
+      const real = new Float32Array(partial.harmonic + 1)
+      const imaginary = new Float32Array(partial.harmonic + 1)
+      real[partial.harmonic] = Math.sin(partial.phase)
+      imaginary[partial.harmonic] = Math.cos(partial.phase)
+      oscillator.setPeriodicWave(
+        context.createPeriodicWave(real, imaginary, { disableNormalization: true }),
+      )
+      oscillator.frequency.setValueAtTime(frequency, now)
+    }
     oscillator.detune.setValueAtTime(partial.detune, now)
     gain.gain.setValueAtTime(0.0001, now)
     gain.gain.exponentialRampToValueAtTime(peak, now + partial.attack)

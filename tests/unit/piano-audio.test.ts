@@ -338,6 +338,63 @@ describe("piano voice profile", () => {
     expect(middle.filterFrequency).toBe(8_180)
     expect(middle.filterQ).toBe(0.7)
     expect(middle.hammerGain).toBeCloseTo(0.68 * 0.055, 8)
+    expect(middle.partials.every((partial) => partial.phase === 0)).toBeTrue()
+  })
+
+  test("breaks up the phase-locked fundamental without shortening high sustain", () => {
+    const middle = createPianoVoiceProfile(60, 0.68)
+    const treble = createPianoVoiceProfile(79, 0.68)
+    const middleFundamentals = middle.partials.filter((partial) => partial.harmonic === 1)
+    const trebleFundamentals = treble.partials.filter((partial) => partial.harmonic === 1)
+    const tailTargetTotal = treble.partials.reduce(
+      (total, partial) => total + partial.gain * partial.tailLevel,
+      0,
+    )
+    const exponentialValue = (start: number, end: number, progress: number) =>
+      start * (end / start) ** progress
+    const amplitudeAt = (partial: (typeof treble.partials)[number], time: number) => {
+      const peak = Math.max(0.0001, partial.gain)
+      const tailAt = Math.min(partial.decay * 0.28, 1.4)
+      const tail = Math.max(0.0001, peak * partial.tailLevel)
+
+      if (time <= partial.attack) {
+        return exponentialValue(0.0001, peak, time / partial.attack)
+      }
+      if (time <= tailAt) {
+        return exponentialValue(peak, tail, (time - partial.attack) / (tailAt - partial.attack))
+      }
+      if (time <= partial.decay) {
+        return exponentialValue(tail, 0.0001, (time - tailAt) / (partial.decay - tailAt))
+      }
+      return 0.0001
+    }
+    const amplitudeAtTail = treble.partials.map((partial) => amplitudeAt(partial, 1.4))
+    const fundamentalShareAtTail =
+      trebleFundamentals.reduce((total, partial) => total + amplitudeAt(partial, 1.4), 0) /
+      amplitudeAtTail.reduce((total, amplitude) => total + amplitude, 0)
+    const eighthPartial = treble.partials.find((partial) => partial.harmonic === 8)
+    const detuneSpread =
+      Math.max(...trebleFundamentals.map((partial) => partial.detune)) -
+      Math.min(...trebleFundamentals.map((partial) => partial.detune))
+    const fundamentalDecayDifference =
+      Math.max(...trebleFundamentals.map((partial) => partial.decay)) -
+      Math.min(...trebleFundamentals.map((partial) => partial.decay))
+
+    expect(treble.naturalDuration).toBeGreaterThanOrEqual(6.8)
+    expect(trebleFundamentals.map((partial) => partial.tailLevel)).toEqual(
+      middleFundamentals.map((partial) => partial.tailLevel),
+    )
+    expect(fundamentalShareAtTail).toBeLessThanOrEqual(0.83)
+    expect(tailTargetTotal).toBeGreaterThanOrEqual(0.18)
+    expect(fundamentalDecayDifference).toBeGreaterThanOrEqual(0.5)
+    expect(fundamentalDecayDifference).toBeLessThanOrEqual(0.8)
+    expect(detuneSpread).toBeGreaterThanOrEqual(1.2)
+    expect(detuneSpread).toBeLessThanOrEqual(1.4)
+    expect(eighthPartial?.detune).toBeGreaterThanOrEqual(8.5)
+    expect(eighthPartial?.detune).toBeLessThanOrEqual(9.5)
+    expect(new Set(trebleFundamentals.map((partial) => partial.phase)).size).toBe(2)
+    expect(new Set(treble.partials.map((partial) => partial.phase)).size).toBeGreaterThan(2)
+    expect(treble.partials.some((partial) => Math.abs(partial.phase) > 0.1)).toBeTrue()
   })
 })
 
