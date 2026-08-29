@@ -50,6 +50,11 @@ describe("PianoInstrument", () => {
     })
     expect(movementGuide.textContent).toContain("Move range")
     expect(movementGuide.querySelectorAll('[data-slot="kbd"]')).toHaveLength(2)
+    const pedalGuide = screen.getByRole("note", {
+      name: "Press Space to turn the sustain pedal on or off",
+    })
+    expect(pedalGuide.textContent).toContain("Pedal on/off")
+    expect(pedalGuide.querySelector('[data-slot="kbd"]')?.textContent).toBe("Space")
     expect(screen.queryByRole("button", { name: /semitone (down|up)/ })).toBeNull()
     expect(screen.getByRole("group", { name: "Keyboard mode" })).toBeTruthy()
     const singleMode = screen.getByRole("button", { name: "Single keyboard" })

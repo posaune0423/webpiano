@@ -97,6 +97,11 @@ test("opens directly into the responsive playable piano without page overflow", 
   })
   await expect(movementGuide).toContainText("Move range")
   await expect(movementGuide.locator('[data-slot="kbd"]')).toHaveCount(2)
+  const pedalGuide = main.getByRole("note", {
+    name: "Press Space to turn the sustain pedal on or off",
+  })
+  await expect(pedalGuide).toContainText("Pedal on/off")
+  await expect(pedalGuide.locator('[data-slot="kbd"]')).toHaveText("Space")
   await expect(main.getByRole("button", { name: /semitone (down|up)/ })).toHaveCount(0)
   await expect(main.getByRole("status", { name: /Sustain (on|off)/ })).toBeAttached()
   await expect(main.getByRole("status", { name: "Play a note to start audio" })).toBeAttached()

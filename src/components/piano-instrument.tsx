@@ -103,6 +103,20 @@ function RangeMovementGuide({ instrumentMode }: { instrumentMode: InstrumentMode
   )
 }
 
+function PedalShortcutGuide() {
+  return (
+    <div
+      aria-label="Press Space to turn the sustain pedal on or off"
+      className="flex shrink-0 items-center gap-1.5 font-mono text-[0.625rem] tracking-[0.08em] text-muted-foreground uppercase"
+      data-pedal-shortcut-guide=""
+      role="note"
+    >
+      <Kbd aria-hidden="true">Space</Kbd>
+      <span>Pedal on/off</span>
+    </div>
+  )
+}
+
 function DualRangeIcon() {
   return (
     <svg
@@ -607,7 +621,13 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
                 </>
               )}
             </div>
-            <RangeMovementGuide instrumentMode={instrumentMode} />
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+              <PedalShortcutGuide />
+              <span aria-hidden="true" className="text-muted-foreground">
+                ·
+              </span>
+              <RangeMovementGuide instrumentMode={instrumentMode} />
+            </div>
           </div>
 
           <div className="flex flex-wrap items-end justify-between gap-4 [@media(max-height:500px)]:hidden">
