@@ -41,6 +41,7 @@ describe("PianoInstrument", () => {
     expect(screen.getByRole("group", { name: "Playable piano" })).toBeTruthy()
     expect(screen.getAllByRole("button", { name: /Play / })).toHaveLength(32)
     expect(screen.getByRole("status", { name: "Standard range" }).textContent).toBe("C3–G5")
+    expect(screen.getByLabelText("Standard transposition key C").textContent).toBe("Key C")
     expect(screen.getByRole("button", { name: "Standard semitone down" })).toBeTruthy()
     expect(screen.getByRole("button", { name: "Standard semitone up" })).toBeTruthy()
     expect(screen.getByRole("group", { name: "Keyboard mode" })).toBeTruthy()
@@ -104,6 +105,9 @@ describe("PianoInstrument", () => {
     fireEvent.click(screen.getByRole("button", { name: "Lower semitone down" }))
     fireEvent.click(screen.getByRole("button", { name: "Upper semitone up" }))
 
+    expect(screen.getByLabelText("Lower transposition key B").textContent).toBe("Key B")
+    expect(screen.getByLabelText("Upper transposition key C♯").textContent).toBe("Key C♯")
+
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
     fireEvent.keyUp(window, { code: "KeyZ" })
     fireEvent.keyDown(window, { code: "KeyQ", repeat: false })
@@ -164,6 +168,7 @@ describe("PianoInstrument", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Standard semitone down" }))
     expect(screen.getByRole("status", { name: "Standard range" }).textContent).toBe("B2–F♯5")
+    expect(screen.getByLabelText("Standard transposition key B").textContent).toBe("Key B")
 
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
     fireEvent.keyUp(window, { code: "KeyZ" })

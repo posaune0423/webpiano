@@ -230,6 +230,10 @@ export function formatPianoRange(startMidi: number, noteCount: number): string {
   return `${noteName(startMidi)}–${noteName(startMidi + noteCount - 1)}`
 }
 
+export function formatTranspositionKey(midi: number): string {
+  return NOTE_NAMES.at(midi % 12) ?? "C"
+}
+
 export function getFullPianoRangeBounds(
   startMidi: number,
   noteCount: number,

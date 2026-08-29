@@ -5,6 +5,7 @@ import {
   FULL_PIANO_KEYS,
   PIANO_KEYS,
   createPianoLayout,
+  formatTranspositionKey,
   getPianoKeyByCode,
   midiToFrequency,
 } from "@/lib/piano"
@@ -141,6 +142,12 @@ describe("piano keyboard mapping", () => {
     expect(
       api.getClosestFullPianoMidi((bounds.leftPercent + bounds.rightPercent) / 2),
     ).toBeGreaterThan(42)
+  })
+
+  test("formats the transposition key without implying a major or minor mode", () => {
+    expect(formatTranspositionKey(47)).toBe("B")
+    expect(formatTranspositionKey(48)).toBe("C")
+    expect(formatTranspositionKey(49)).toBe("C♯")
   })
 
   test("describes the full 88-key piano from A0 through C8", () => {

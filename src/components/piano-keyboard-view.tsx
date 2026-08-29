@@ -6,6 +6,7 @@ import type {
 } from "react"
 import { useRef, useState } from "react"
 
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   FULL_PIANO_KEYS,
@@ -17,6 +18,7 @@ import {
   STANDARD_RANGE_NOTE_COUNT,
   UPPER_RANGE_NOTE_COUNT,
   formatPianoRange,
+  formatTranspositionKey,
   getClosestFullPianoMidi,
   getFullPianoRangeBounds,
 } from "@/lib/piano"
@@ -160,33 +162,43 @@ function RangeStepper({
   zone: PianoZone | "standard"
 }) {
   const zoneLabel = zone === "standard" ? "Standard" : zone === "lower" ? "Lower" : "Upper"
+  const transpositionKey = formatTranspositionKey(startMidi)
 
   return (
-    <div className="flex items-center overflow-hidden rounded-sm border border-border bg-background">
-      <Button
-        aria-label={`${zoneLabel} semitone down`}
-        disabled={startMidi === FULL_PIANO_MIN_MIDI}
-        size="icon-xs"
-        variant="ghost"
-        onClick={() => onRangeChange(startMidi - 1)}
+    <div className="flex items-center gap-1">
+      <div className="flex items-center overflow-hidden rounded-sm border border-border bg-background">
+        <Button
+          aria-label={`${zoneLabel} semitone down`}
+          disabled={startMidi === FULL_PIANO_MIN_MIDI}
+          size="icon-xs"
+          variant="ghost"
+          onClick={() => onRangeChange(startMidi - 1)}
+        >
+          −
+        </Button>
+        <output
+          aria-label={`${zoneLabel} range`}
+          className="grid h-6 min-w-16 place-items-center border-x border-border px-1 font-mono text-[0.5625rem] tracking-[0.06em] text-brass"
+        >
+          {formatPianoRange(startMidi, noteCount)}
+        </output>
+        <Button
+          aria-label={`${zoneLabel} semitone up`}
+          disabled={startMidi === maximumStartMidi}
+          size="icon-xs"
+          variant="ghost"
+          onClick={() => onRangeChange(startMidi + 1)}
+        >
+          ＋
+        </Button>
+      </div>
+      <Badge
+        aria-label={`${zoneLabel} transposition key ${transpositionKey}`}
+        className="h-6 min-w-14"
+        variant="outline"
       >
-        −
-      </Button>
-      <output
-        aria-label={`${zoneLabel} range`}
-        className="grid h-6 min-w-16 place-items-center border-x border-border px-1 font-mono text-[0.5625rem] tracking-[0.06em] text-brass"
-      >
-        {formatPianoRange(startMidi, noteCount)}
-      </output>
-      <Button
-        aria-label={`${zoneLabel} semitone up`}
-        disabled={startMidi === maximumStartMidi}
-        size="icon-xs"
-        variant="ghost"
-        onClick={() => onRangeChange(startMidi + 1)}
-      >
-        ＋
-      </Button>
+        Key {transpositionKey}
+      </Badge>
     </div>
   )
 }

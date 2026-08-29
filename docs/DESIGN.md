@@ -44,6 +44,7 @@ The base radius is 4px. Panels may use 8px (`rounded-lg`); controls and labels s
 - Dual Range reuses the same 88-key navigator with two draggable, semitone-snapped translucent LOWER/UPPER ranges. LOWER exposes 17 bindings (`Z–/`) and UPPER exposes 20 (`Q–]`) in enlarged keyboards below it.
 - The standard first view exposes 32 notes from the same 37 physical bindings, combines overlapping key labels, and moves the complete range one semitone at a time through the stepper or global `←` / `→` shortcuts.
 - The standard range summary reserves a 56px slot for its note span so adding one or two `♯` glyphs never shifts the trailing `· 32 notes` label.
+- Every range stepper pairs its note span with a fixed-width rectangular `KEY C` label that follows the start pitch class; `KEY` describes chromatic transposition and never claims a major or minor mode.
 - The same summary distinguishes `32 notes` (unique pitches on the merged standard keyboard) from `37 keys` (physical QWERTY bindings).
 - The instrument uses landscape as the primary phone layout. Portrait shows only a restrained orientation guide; the playable surface is not compressed into portrait.
 - Piano keys are specialized native buttons with visible note/PC-key labels, a physical two-black/three-black pattern, pressed state, pointer capture, and keyboard/assistive activation.
@@ -63,6 +64,7 @@ The base radius is 4px. Panels may use 8px (`rounded-lg`); controls and labels s
 - The approved shared navigator and icon system are recorded in `unified-88-navigator-standard-desktop.png`, `unified-88-navigator-dual-desktop.png`, their mobile landscape counterparts, and `header-icons-labeled-dual-desktop.png`.
 - The explicit mode and sound toggle states are recorded in `header-mode-sound-toggles-single.png`, `header-mode-sound-toggles-dual-muted.png`, and the mobile header variant.
 - The approved Sustain Lock and PWA install flow is recorded in `pedal-lock-states-desktop.png`, `pedal-install-header-desktop.png`, `a2hs-drawer-desktop.png`, and `a2hs-drawer-mobile-landscape.png`.
+- The transposition-key label is recorded in `transposition-key-standard-desktop.png`, `transposition-key-dual-desktop.png`, and `transposition-key-standard-mobile-landscape.png`.
 
 ## Motion
 
