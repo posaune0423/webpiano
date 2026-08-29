@@ -95,14 +95,13 @@ export function createPianoVoiceProfile(midi: number, velocity: number): PianoVo
   }
 }
 
-function holdAudioParamAtTime(parameter: AudioParam, time: number): void {
-  if (typeof parameter.cancelAndHoldAtTime === "function") {
-    parameter.cancelAndHoldAtTime(time)
-    return
-  }
-
-  parameter.cancelScheduledValues(time)
-  parameter.setValueAtTime(Math.max(parameter.value, 0.0001), time)
+export function schedulePianoRelease(
+  parameter: AudioParam,
+  startAt: number,
+  duration: number,
+): void {
+  parameter.setValueAtTime(1, startAt)
+  parameter.exponentialRampToValueAtTime(0.0001, startAt + duration)
 }
 
 function createWebAudioVoice(
@@ -116,9 +115,10 @@ function createWebAudioVoice(
   const profile = createPianoVoiceProfile(midi, velocity)
   const filter = context.createBiquadFilter()
   const body = context.createBiquadFilter()
+  const emergencyEnvelope = context.createGain()
   const output = context.createGain()
+  const releaseEnvelope = context.createGain()
   const oscillators: OscillatorNode[] = []
-  const partialGains: GainNode[] = []
 
   filter.type = "lowpass"
   filter.frequency.setValueAtTime(profile.filterFrequency, now)
@@ -127,8 +127,12 @@ function createWebAudioVoice(
   body.frequency.setValueAtTime(240, now)
   body.Q.setValueAtTime(0.75, now)
   body.gain.setValueAtTime(2.2, now)
+  emergencyEnvelope.gain.setValueAtTime(1, now)
   output.gain.setValueAtTime(muted ? 0 : 0.74, now)
-  output.connect(filter)
+  releaseEnvelope.gain.setValueAtTime(1, now)
+  output.connect(releaseEnvelope)
+  releaseEnvelope.connect(emergencyEnvelope)
+  emergencyEnvelope.connect(filter)
   filter.connect(body)
   body.connect(context.destination)
 
@@ -151,7 +155,6 @@ function createWebAudioVoice(
     oscillator.start(now)
     oscillator.stop(now + partial.decay + 0.08)
     oscillators.push(oscillator)
-    partialGains.push(gain)
   }
 
   const hammer = context.createBufferSource()
@@ -183,23 +186,36 @@ function createWebAudioVoice(
   hammer.start(now)
   hammer.stop(now + hammerDuration)
 
-  let released = false
+  let damped = false
+  let immediatelyStopped = false
 
   return {
     release(kind = "key") {
-      if (released) {
+      const releaseAt = context.currentTime
+
+      if (kind === "immediate") {
+        if (immediatelyStopped) {
+          return
+        }
+
+        immediatelyStopped = true
+        const releaseDuration = 0.08
+        schedulePianoRelease(emergencyEnvelope.gain, releaseAt, releaseDuration)
+
+        for (const oscillator of oscillators) {
+          oscillator.stop(releaseAt + releaseDuration + 0.08)
+        }
+
         return
       }
 
-      released = true
-      const releaseAt = context.currentTime
-      const releaseDuration =
-        kind === "immediate" ? 0.08 : kind === "pedal" ? profile.pedalRelease : profile.keyRelease
-
-      for (const gain of partialGains) {
-        holdAudioParamAtTime(gain.gain, releaseAt)
-        gain.gain.exponentialRampToValueAtTime(0.0001, releaseAt + releaseDuration)
+      if (damped || immediatelyStopped) {
+        return
       }
+
+      damped = true
+      const releaseDuration = kind === "pedal" ? profile.pedalRelease : profile.keyRelease
+      schedulePianoRelease(releaseEnvelope.gain, releaseAt, releaseDuration)
 
       for (const oscillator of oscillators) {
         oscillator.stop(releaseAt + releaseDuration + 0.08)
@@ -250,7 +266,7 @@ export class SynthPianoEngine implements PianoEngine {
       return
     }
 
-    this.voices.get(midi)?.release("key")
+    this.voices.get(midi)?.release("immediate")
     const voice = this.voiceFactory(context, midi, velocity, this.muted)
     this.voices.set(midi, voice)
   }
@@ -304,7 +320,6 @@ export class SynthPianoEngine implements PianoEngine {
 
   private releaseNote(midi: number, kind: PianoReleaseKind): void {
     this.voices.get(midi)?.release(kind)
-    this.voices.delete(midi)
   }
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from "bun:test"
 
-import { SynthPianoEngine, createPianoVoiceProfile } from "@/lib/piano-audio"
+import { SynthPianoEngine, createPianoVoiceProfile, schedulePianoRelease } from "@/lib/piano-audio"
 
 describe("SynthPianoEngine", () => {
   test("resumes the interactive audio context before starting a note", async () => {
@@ -113,7 +113,7 @@ describe("SynthPianoEngine", () => {
   })
 
   test("allNotesOff releases sustained and pressed voices", async () => {
-    const release = mock(() => {})
+    const release = mock((_kind?: string) => {})
     const context = {
       currentTime: 5,
       resume: async () => {},
@@ -129,7 +129,68 @@ describe("SynthPianoEngine", () => {
     engine.noteOff(60)
     engine.allNotesOff()
 
-    expect(release).toHaveBeenCalledTimes(1)
+    expect(release).toHaveBeenCalledWith("immediate")
+  })
+
+  test("allNotesOff shortens a key release that is already fading", async () => {
+    const release = mock((_kind?: string) => {})
+    const context = {
+      currentTime: 5,
+      resume: async () => {},
+      state: "running",
+    } as unknown as AudioContext
+    const engine = new SynthPianoEngine(
+      () => context,
+      () => ({ release }),
+    )
+
+    await engine.noteOn(60, 0.68)
+    engine.noteOff(60)
+    engine.allNotesOff()
+
+    expect(release.mock.calls).toEqual([["key"], ["immediate"]])
+  })
+
+  test("allNotesOff shortens a pedal release that is already fading", async () => {
+    const release = mock((_kind?: string) => {})
+    const context = {
+      currentTime: 5,
+      resume: async () => {},
+      state: "running",
+    } as unknown as AudioContext
+    const engine = new SynthPianoEngine(
+      () => context,
+      () => ({ release }),
+    )
+
+    await engine.noteOn(60, 0.68)
+    engine.setSustain(true)
+    engine.noteOff(60)
+    engine.setSustain(false)
+    engine.allNotesOff()
+
+    expect(release.mock.calls).toEqual([["pedal"], ["immediate"]])
+  })
+
+  test("a rapid re-press shortens the previous release before starting a new voice", async () => {
+    const firstRelease = mock((_kind?: string) => {})
+    const secondRelease = mock((_kind?: string) => {})
+    const context = {
+      currentTime: 5,
+      resume: async () => {},
+      state: "running",
+    } as unknown as AudioContext
+    const createVoice = mock()
+    createVoice.mockReturnValueOnce({ release: firstRelease })
+    createVoice.mockReturnValueOnce({ release: secondRelease })
+    const engine = new SynthPianoEngine(() => context, createVoice)
+
+    await engine.noteOn(60, 0.68)
+    engine.noteOff(60)
+    await engine.noteOn(60, 0.68)
+
+    expect(firstRelease.mock.calls).toEqual([["key"], ["immediate"]])
+    expect(createVoice).toHaveBeenCalledTimes(2)
   })
 
   test("mutes existing and future voices until sound is restored", async () => {
@@ -190,5 +251,27 @@ describe("piano voice profile", () => {
     const profile = createPianoVoiceProfile(60, 0.68)
 
     expect(profile.pedalRelease).toBeGreaterThan(profile.keyRelease)
+  })
+})
+
+describe("piano release envelope", () => {
+  test("schedules an isolated gain ramp without reading or canceling partial automation", () => {
+    const exponentialRampToValueAtTime = mock((_value: number, _time: number) => undefined)
+    const cancelScheduledValues = mock((_time: number) => undefined)
+    const setValueAtTime = mock((_value: number, _time: number) => undefined)
+    const parameter = {
+      cancelScheduledValues,
+      exponentialRampToValueAtTime,
+      setValueAtTime,
+      get value() {
+        throw new Error("release scheduling must not read AudioParam.value")
+      },
+    } as unknown as AudioParam
+
+    schedulePianoRelease(parameter, 4, 1.3)
+
+    expect(cancelScheduledValues).not.toHaveBeenCalled()
+    expect(setValueAtTime).toHaveBeenCalledWith(1, 4)
+    expect(exponentialRampToValueAtTime).toHaveBeenCalledWith(0.0001, 5.3)
   })
 })
