@@ -42,15 +42,15 @@ The base radius is 4px. Panels may use 8px (`rounded-lg`); controls and labels s
   and loading states use matching shadcn Skeleton blocks so content replaces them in place.
 - `/` opens directly into the standard 32-note single keyboard with a shared approximately 8.2:1 A0–C8 navigator and one draggable STANDARD range. Dual Range is an explicit opt-in header mode and never replaces the simple first view.
 - Dual Range reuses the same 88-key navigator with two draggable, semitone-snapped translucent LOWER/UPPER ranges. LOWER exposes 17 bindings (`Z–/`) and UPPER exposes 20 (`Q–]`) in enlarged keyboards below it.
-- The standard first view exposes 32 notes from the same 37 physical bindings, combines overlapping key labels, and moves the complete range one semitone at a time through the stepper or global `←` / `→` shortcuts.
+- The standard first view exposes 32 notes from the same 37 physical bindings, combines overlapping key labels, and moves the complete range one semitone at a time by dragging the navigator or using the global `←` / `→` shortcuts.
 - The standard range summary reserves a 56px slot for its note span so adding one or two `♯` glyphs never shifts the trailing `· 32 notes` label.
-- The header carries one fixed-width transposition readout beside the keyboard-mode control, leaving the navigator and playable piano free of extra status UI. It shows `KEY C` in Single mode and a compact `L C · U C` in Dual mode; `KEY` describes chromatic transposition and never claims a major or minor mode.
+- A slim status strip immediately below the header carries one fixed-width transposition readout and a subtle arrow-key guide, leaving the navigator and playable piano free of extra status UI. It shows `KEY C` with `← → MOVE RANGE` in Single mode and a compact `L C · U C` with `SELECT RANGE · ← → FINE MOVE` in Dual mode; `KEY` describes chromatic transposition and never claims a major or minor mode.
 - The same summary distinguishes `32 notes` (unique pitches on the merged standard keyboard) from `37 keys` (physical QWERTY bindings).
 - The instrument uses landscape as the primary phone layout. Portrait shows only a restrained orientation guide; the playable surface is not compressed into portrait.
 - Piano keys are specialized native buttons with visible note/PC-key labels, a physical two-black/three-black pattern, pressed state, pointer capture, and keyboard/assistive activation.
 - “Use phone as pedal” opens a focused shadcn Dialog with a short-lived QR code. After pairing, the Dialog closes so the keyboard remains playable and the header retains the connection control.
 - The pedal icon opens one menu containing Sustain Lock and “Use phone as pedal”. Its open-lock/closed-lock detail distinguishes unlocked and locked state, while the button surface still reflects sustain arriving from either the lock or phone pedal. Space toggles the same Sustain Lock instead of acting as a hold-to-sustain key. The QR dialog keeps one fixed-height session slot across creating, waiting, failure, and connected states.
-- Header controls keep one clear responsibility each: the pedal icon owns sustain state, an explicit `SINGLE | DUAL` ToggleGroup selects keyboard mode, its adjacent fixed-width readout reports the active transposition without covering the piano, the fixed-width Install control invokes a captured desktop install prompt directly and otherwise opens the A2HS Drawer, and the speaker button toggles Mute/Unmute with `Volume2`/`VolumeX`. Sustain and audio-engine status remain available to assistive technology without duplicate visual badges.
+- Header controls keep one clear responsibility each: the pedal icon owns sustain state, an explicit `SINGLE | DUAL` ToggleGroup selects keyboard mode, the fixed-width Install control invokes a captured desktop install prompt directly and otherwise opens the A2HS Drawer, and the speaker button toggles Mute/Unmute with `Volume2`/`VolumeX`. Transposition and movement guidance live in the status strip below the header, while sustain and audio-engine status remain available to assistive technology without duplicate visual badges.
 - The Install control never mounts or unmounts in response to browser capability. Its fixed header slot remains stable while supported desktop browsers receive the captured native prompt in one click, and the Drawer switches a reserved, same-geometry content area between shadcn Skeleton, native install fallback, iPhone/iPad Add to Home Screen instructions, generic browser instructions, and installed confirmation.
 - `/pedal/[sessionId]` is a dedicated full-screen controller: small diagnostic connection copy above one large metal pedal rendered with semantic-token SVG/CSS. It has no piano keyboard or marketing content.
 
@@ -58,13 +58,13 @@ The base radius is 4px. Panels may use 8px (`rounded-lg`); controls and labels s
 
 - Before changing UI structure or wording, capture the current rendered UI and create desktop and affected mobile wireframes under `docs/wireframes/`.
 - Wireframes extend the actual product surface and semantic tokens; they are not independent redesigns or generic mockups.
-- The selected references are `semitone-range-standard-desktop.png`, `semitone-range-dual-desktop.png`, and the corresponding dragging/mobile landscape variants.
+- The earlier semitone-range exploration is retained in `semitone-range-standard-desktop.png`, `semitone-range-dual-desktop.png`, and the corresponding dragging/mobile landscape variants; the adopted control-free piano surface is recorded by the transposition/status-strip references below.
 - The range-label comparison is recorded in `standard-range-label-natural-desktop.png`, `standard-range-label-sharp-current-desktop.png`, and the fixed-slot `standard-range-label-fixed-*-desktop.png` pair.
 - The combined note/binding count is recorded in `standard-range-summary-counts-desktop.png`.
 - The approved shared navigator and icon system are recorded in `unified-88-navigator-standard-desktop.png`, `unified-88-navigator-dual-desktop.png`, their mobile landscape counterparts, and `header-icons-labeled-dual-desktop.png`.
 - The explicit mode and sound toggle states are recorded in `header-mode-sound-toggles-single.png`, `header-mode-sound-toggles-dual-muted.png`, and the mobile header variant.
 - The approved Sustain Lock and PWA install flow is recorded in `pedal-lock-states-desktop.png`, `pedal-install-header-desktop.png`, `a2hs-drawer-desktop.png`, and `a2hs-drawer-mobile-landscape.png`.
-- The unobtrusive header transposition readout is recorded in `transposition-key-standard-desktop.png`, `transposition-key-dual-desktop.png`, and `transposition-key-standard-mobile-landscape.png`.
+- The unobtrusive below-header status strip, arrow guide, and piano surface without range steppers are recorded in `transposition-key-standard-desktop.png`, `transposition-key-dual-desktop.png`, and `transposition-key-standard-mobile-landscape.png`.
 
 ## Motion
 

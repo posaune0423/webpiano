@@ -43,12 +43,14 @@ describe("PianoInstrument", () => {
     expect(screen.getByRole("status", { name: "Standard range" }).textContent).toBe("C3–G5")
     const transpositionReadout = screen.getByLabelText("Standard transposition key C")
     expect(transpositionReadout.textContent).toBe("Key C")
-    expect(transpositionReadout.closest("header")).toBeTruthy()
-    expect(
-      screen.getByRole("main").querySelector('section [aria-label*="transposition key"]'),
-    ).toBeNull()
-    expect(screen.getByRole("button", { name: "Standard semitone down" })).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Standard semitone up" })).toBeTruthy()
+    expect(transpositionReadout.closest("header")).toBeNull()
+    expect(transpositionReadout.closest("section")).toBeTruthy()
+    const movementGuide = screen.getByRole("note", {
+      name: "Use Left and Right Arrow keys to move the range",
+    })
+    expect(movementGuide.textContent).toContain("Move range")
+    expect(movementGuide.querySelectorAll('[data-slot="kbd"]')).toHaveLength(2)
+    expect(screen.queryByRole("button", { name: /semitone (down|up)/ })).toBeNull()
     expect(screen.getByRole("group", { name: "Keyboard mode" })).toBeTruthy()
     const singleMode = screen.getByRole("button", { name: "Single keyboard" })
     const dualMode = screen.getByRole("button", { name: "Dual keyboard" })
@@ -107,17 +109,27 @@ describe("PianoInstrument", () => {
     expect(screen.getByRole("group", { name: "Upper playable piano" })).toBeTruthy()
     expect(screen.getAllByRole("button", { name: /Play / })).toHaveLength(37)
 
-    fireEvent.click(screen.getByRole("button", { name: "Lower semitone down" }))
-    fireEvent.click(screen.getByRole("button", { name: "Upper semitone up" }))
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Move Lower range" }), {
+      key: "ArrowLeft",
+    })
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Move Upper range" }), {
+      key: "ArrowRight",
+    })
 
     const transpositionReadout = screen.getByLabelText(
       "Lower transposition key B, Upper transposition key C♯",
     )
     expect(transpositionReadout.textContent).toBe("L B · U C♯")
-    expect(transpositionReadout.closest("header")).toBeTruthy()
+    expect(transpositionReadout.closest("header")).toBeNull()
+    expect(transpositionReadout.closest("section")).toBeTruthy()
     expect(
-      screen.getByRole("main").querySelector('section [aria-label*="transposition key"]'),
-    ).toBeNull()
+      screen.getByRole("note", {
+        name: "Select a range, then use Left and Right Arrow keys for fine movement",
+      }).textContent,
+    ).toContain("Fine move")
+    expect(
+      screen.getByRole("slider", { name: "Move Lower range" }).getAttribute("aria-describedby"),
+    ).toBe("range-movement-guide")
 
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
     fireEvent.keyUp(window, { code: "KeyZ" })
@@ -162,14 +174,13 @@ describe("PianoInstrument", () => {
     renderInstrument()
     fireEvent.click(screen.getByRole("button", { name: "Dual keyboard" }))
 
-    const lowerDown = screen.getByRole("button", { name: "Lower semitone down" })
-    const upperUp = screen.getByRole("button", { name: "Upper semitone up" })
+    const lowerRange = screen.getByRole("slider", { name: "Move Lower range" })
+    const upperRange = screen.getByRole("slider", { name: "Move Upper range" })
+    fireEvent.keyDown(lowerRange, { key: "Home" })
+    fireEvent.keyDown(upperRange, { key: "End" })
 
-    for (let index = 0; index < 27; index += 1) fireEvent.click(lowerDown)
-    for (let index = 0; index < 29; index += 1) fireEvent.click(upperUp)
-
-    expect(lowerDown.hasAttribute("disabled")).toBe(true)
-    expect(upperUp.hasAttribute("disabled")).toBe(true)
+    expect(lowerRange.getAttribute("aria-valuenow")).toBe("21")
+    expect(upperRange.getAttribute("aria-valuenow")).toBe("89")
     expect(screen.getByRole("status", { name: "Lower range" }).textContent).toBe("A0–C♯2")
     expect(screen.getByRole("status", { name: "Upper range" }).textContent).toBe("F6–C8")
   })
@@ -177,11 +188,11 @@ describe("PianoInstrument", () => {
   test("moves the complete standard keyboard by one semitone", () => {
     renderInstrument()
 
-    fireEvent.click(screen.getByRole("button", { name: "Standard semitone down" }))
+    fireEvent.keyDown(window, { code: "ArrowLeft", key: "ArrowLeft" })
     expect(screen.getByRole("status", { name: "Standard range" }).textContent).toBe("B2–F♯5")
     const transpositionReadout = screen.getByLabelText("Standard transposition key B")
     expect(transpositionReadout.textContent).toBe("Key B")
-    expect(transpositionReadout.closest("header")).toBeTruthy()
+    expect(transpositionReadout.closest("section")).toBeTruthy()
 
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
     fireEvent.keyUp(window, { code: "KeyZ" })
@@ -230,7 +241,7 @@ describe("PianoInstrument", () => {
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
     fireEvent.keyUp(window, { code: "KeyZ" })
 
-    fireEvent.click(screen.getByRole("button", { name: "Standard semitone down" }))
+    fireEvent.keyDown(window, { code: "ArrowLeft", key: "ArrowLeft" })
 
     expect(screen.getByRole("status", { name: "Standard range" }).textContent).toBe("B2–F♯5")
     expect(allNotesOff).not.toHaveBeenCalled()
@@ -244,7 +255,7 @@ describe("PianoInstrument", () => {
     renderInstrument()
 
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
-    fireEvent.click(screen.getByRole("button", { name: "Standard semitone down" }))
+    fireEvent.keyDown(window, { code: "ArrowLeft", key: "ArrowLeft" })
     fireEvent.keyUp(window, { code: "KeyZ" })
 
     expect(allNotesOff).not.toHaveBeenCalled()
@@ -260,7 +271,7 @@ describe("PianoInstrument", () => {
     const c3 = screen.getByRole("button", { name: "Play C3 with Z" })
 
     fireEvent.pointerDown(c3, { pointerId: 17 })
-    fireEvent.click(screen.getByRole("button", { name: "Standard semitone up" }))
+    fireEvent.keyDown(window, { code: "ArrowRight", key: "ArrowRight" })
     fireEvent.pointerUp(window, { pointerId: 17 })
 
     expect(allNotesOff).not.toHaveBeenCalled()
@@ -273,7 +284,7 @@ describe("PianoInstrument", () => {
     const c3 = screen.getByRole("button", { name: "Play C3 with Z" })
 
     fireEvent.keyDown(c3, { code: "Enter", key: "Enter", repeat: false })
-    fireEvent.click(screen.getByRole("button", { name: "Standard semitone up" }))
+    fireEvent.keyDown(window, { code: "ArrowRight", key: "ArrowRight" })
     fireEvent.keyUp(window, { code: "Enter", key: "Enter" })
 
     expect(allNotesOff).not.toHaveBeenCalled()
@@ -304,6 +315,7 @@ describe("PianoInstrument", () => {
 
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
     fireEvent.pointerDown(lowerRange, { clientX: 317, pointerId: 11 })
+    expect(document.activeElement).toBe(lowerRange)
     fireEvent.pointerMove(lowerRange, { clientX: 250, pointerId: 11 })
 
     expect(screen.getByRole("status", { name: "Lower range" }).textContent).toBe("C3–E4")
