@@ -9,7 +9,7 @@ import { PedalApiProvider } from "@/trpc/client"
 const noteOn = mock(async () => {})
 const noteOff = mock(() => {})
 const setMuted = mock((_muted: boolean) => {})
-const setSustain = mock(() => {})
+const setSustain = mock((_enabled: boolean) => {})
 const allNotesOff = mock(() => {})
 
 function renderInstrument() {
@@ -41,8 +41,18 @@ describe("PianoInstrument", () => {
     expect(screen.getByRole("group", { name: "Playable piano" })).toBeTruthy()
     expect(screen.getAllByRole("button", { name: /Play / })).toHaveLength(32)
     expect(screen.getByRole("status", { name: "Standard range" }).textContent).toBe("C3–G5")
-    expect(screen.getByRole("button", { name: "Standard semitone down" })).toBeTruthy()
-    expect(screen.getByRole("button", { name: "Standard semitone up" })).toBeTruthy()
+    const transpositionReadout = screen.getByLabelText("Standard transposition key C")
+    expect(transpositionReadout.textContent).toBe("Key C")
+    expect(transpositionReadout.closest("header")).toBeNull()
+    expect(transpositionReadout.closest("section")).toBeTruthy()
+    const movementGuide = screen.getByRole("note", {
+      name: "Use Left and Right Arrow keys to move the range",
+    })
+    expect(movementGuide.textContent).toContain("Move range")
+    expect(movementGuide.querySelectorAll('[data-slot="kbd"]')).toHaveLength(2)
+    expect(screen.queryByText("Pedal off")).toBeNull()
+    expect(screen.getByRole("main").querySelector("[data-pedal-status]")).toBeNull()
+    expect(screen.queryByRole("button", { name: /semitone (down|up)/ })).toBeNull()
     expect(screen.getByRole("group", { name: "Keyboard mode" })).toBeTruthy()
     const singleMode = screen.getByRole("button", { name: "Single keyboard" })
     const dualMode = screen.getByRole("button", { name: "Dual keyboard" })
@@ -101,8 +111,27 @@ describe("PianoInstrument", () => {
     expect(screen.getByRole("group", { name: "Upper playable piano" })).toBeTruthy()
     expect(screen.getAllByRole("button", { name: /Play / })).toHaveLength(37)
 
-    fireEvent.click(screen.getByRole("button", { name: "Lower semitone down" }))
-    fireEvent.click(screen.getByRole("button", { name: "Upper semitone up" }))
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Move Lower range" }), {
+      key: "ArrowLeft",
+    })
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Move Upper range" }), {
+      key: "ArrowRight",
+    })
+
+    const transpositionReadout = screen.getByLabelText(
+      "Lower transposition key B, Upper transposition key C♯",
+    )
+    expect(transpositionReadout.textContent).toBe("L B · U C♯")
+    expect(transpositionReadout.closest("header")).toBeNull()
+    expect(transpositionReadout.closest("section")).toBeTruthy()
+    expect(
+      screen.getByRole("note", {
+        name: "Select a range, then use Left and Right Arrow keys for fine movement",
+      }).textContent,
+    ).toContain("Fine move")
+    expect(
+      screen.getByRole("slider", { name: "Move Lower range" }).getAttribute("aria-describedby"),
+    ).toBe("range-movement-guide")
 
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
     fireEvent.keyUp(window, { code: "KeyZ" })
@@ -140,21 +169,20 @@ describe("PianoInstrument", () => {
     fireEvent.pointerUp(standardRange, { clientX: 250, pointerId: 12 })
 
     expect(screen.getByRole("status", { name: "Standard range" }).textContent).toBe("F♯2–C♯5")
-    expect(allNotesOff).toHaveBeenCalledTimes(1)
+    expect(allNotesOff).not.toHaveBeenCalled()
   })
 
   test("bounds both ranges inside the full 88-key piano", () => {
     renderInstrument()
     fireEvent.click(screen.getByRole("button", { name: "Dual keyboard" }))
 
-    const lowerDown = screen.getByRole("button", { name: "Lower semitone down" })
-    const upperUp = screen.getByRole("button", { name: "Upper semitone up" })
+    const lowerRange = screen.getByRole("slider", { name: "Move Lower range" })
+    const upperRange = screen.getByRole("slider", { name: "Move Upper range" })
+    fireEvent.keyDown(lowerRange, { key: "Home" })
+    fireEvent.keyDown(upperRange, { key: "End" })
 
-    for (let index = 0; index < 27; index += 1) fireEvent.click(lowerDown)
-    for (let index = 0; index < 29; index += 1) fireEvent.click(upperUp)
-
-    expect(lowerDown.hasAttribute("disabled")).toBe(true)
-    expect(upperUp.hasAttribute("disabled")).toBe(true)
+    expect(lowerRange.getAttribute("aria-valuenow")).toBe("21")
+    expect(upperRange.getAttribute("aria-valuenow")).toBe("89")
     expect(screen.getByRole("status", { name: "Lower range" }).textContent).toBe("A0–C♯2")
     expect(screen.getByRole("status", { name: "Upper range" }).textContent).toBe("F6–C8")
   })
@@ -162,8 +190,11 @@ describe("PianoInstrument", () => {
   test("moves the complete standard keyboard by one semitone", () => {
     renderInstrument()
 
-    fireEvent.click(screen.getByRole("button", { name: "Standard semitone down" }))
+    fireEvent.keyDown(window, { code: "ArrowLeft", key: "ArrowLeft" })
     expect(screen.getByRole("status", { name: "Standard range" }).textContent).toBe("B2–F♯5")
+    const transpositionReadout = screen.getByLabelText("Standard transposition key B")
+    expect(transpositionReadout.textContent).toBe("Key B")
+    expect(transpositionReadout.closest("section")).toBeTruthy()
 
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
     fireEvent.keyUp(window, { code: "KeyZ" })
@@ -190,17 +221,77 @@ describe("PianoInstrument", () => {
     expect(screen.getByRole("status", { name: "Upper range" }).textContent).toBe("C4–G5")
   })
 
-  test("clears sounding notes but preserves an intentional Sustain Lock across layouts", () => {
+  test("keeps sounding notes and Sustain Lock independent across layouts", () => {
     renderInstrument()
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
     fireEvent.keyDown(window, { code: "Space", repeat: false })
 
     fireEvent.click(screen.getByRole("button", { name: "Dual keyboard" }))
 
-    expect(allNotesOff).toHaveBeenCalledTimes(1)
+    expect(allNotesOff).not.toHaveBeenCalled()
     expect(setSustain).toHaveBeenNthCalledWith(1, true)
     expect(setSustain).toHaveBeenCalledTimes(1)
+    expect(
+      screen.getByRole("button", { name: "Play C3 with Z" }).getAttribute("aria-pressed"),
+    ).toBe("true")
     expect(screen.getByRole("status", { name: "Sustain locked" })).toBeTruthy()
+  })
+
+  test("keeps Sustain Lock and sustained audio while moving the playable range", () => {
+    renderInstrument()
+    fireEvent.keyDown(window, { code: "Space", repeat: false })
+    fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
+    fireEvent.keyUp(window, { code: "KeyZ" })
+
+    fireEvent.keyDown(window, { code: "ArrowLeft", key: "ArrowLeft" })
+
+    expect(screen.getByRole("status", { name: "Standard range" }).textContent).toBe("B2–F♯5")
+    expect(allNotesOff).not.toHaveBeenCalled()
+    expect(setSustain.mock.calls).toEqual([[true]])
+    expect(noteOn).toHaveBeenCalledWith(48, 0.68)
+    expect(noteOff).toHaveBeenCalledWith(48)
+    expect(screen.getByRole("status", { name: "Sustain locked" })).toBeTruthy()
+  })
+
+  test("releases the original note when a held key crosses a range change", () => {
+    renderInstrument()
+
+    fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
+    fireEvent.keyDown(window, { code: "ArrowLeft", key: "ArrowLeft" })
+    fireEvent.keyUp(window, { code: "KeyZ" })
+
+    expect(allNotesOff).not.toHaveBeenCalled()
+    expect(noteOn).toHaveBeenNthCalledWith(1, 48, 0.68)
+    expect(noteOff).toHaveBeenNthCalledWith(1, 48)
+
+    fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
+    expect(noteOn).toHaveBeenNthCalledWith(2, 47, 0.68)
+  })
+
+  test("releases pointer-owned audio after its key leaves the moved range", () => {
+    renderInstrument()
+    const c3 = screen.getByRole("button", { name: "Play C3 with Z" })
+
+    fireEvent.pointerDown(c3, { pointerId: 17 })
+    fireEvent.keyDown(window, { code: "ArrowRight", key: "ArrowRight" })
+    fireEvent.pointerUp(window, { pointerId: 17 })
+
+    expect(allNotesOff).not.toHaveBeenCalled()
+    expect(noteOn).toHaveBeenCalledWith(48, 0.68)
+    expect(noteOff).toHaveBeenCalledWith(48)
+  })
+
+  test("releases Enter-owned audio after its key leaves the moved range", () => {
+    renderInstrument()
+    const c3 = screen.getByRole("button", { name: "Play C3 with Z" })
+
+    fireEvent.keyDown(c3, { code: "Enter", key: "Enter", repeat: false })
+    fireEvent.keyDown(window, { code: "ArrowRight", key: "ArrowRight" })
+    fireEvent.keyUp(window, { code: "Enter", key: "Enter" })
+
+    expect(allNotesOff).not.toHaveBeenCalled()
+    expect(noteOn).toHaveBeenCalledWith(48, 0.68)
+    expect(noteOff).toHaveBeenCalledWith(48)
   })
 
   test("reflects sounding notes on the decorative full-piano navigator", () => {
@@ -226,6 +317,7 @@ describe("PianoInstrument", () => {
 
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
     fireEvent.pointerDown(lowerRange, { clientX: 317, pointerId: 11 })
+    expect(document.activeElement).toBe(lowerRange)
     fireEvent.pointerMove(lowerRange, { clientX: 250, pointerId: 11 })
 
     expect(screen.getByRole("status", { name: "Lower range" }).textContent).toBe("C3–E4")
@@ -234,7 +326,7 @@ describe("PianoInstrument", () => {
     fireEvent.pointerUp(lowerRange, { clientX: 250, pointerId: 11 })
 
     expect(screen.getByRole("status", { name: "Lower range" }).textContent).toBe("F♯2–A♯3")
-    expect(allNotesOff).toHaveBeenCalledTimes(1)
+    expect(allNotesOff).not.toHaveBeenCalled()
   })
 
   test("plays and releases mapped PC keys without repeating held notes", () => {
@@ -295,6 +387,15 @@ describe("PianoInstrument", () => {
     renderInstrument()
 
     fireEvent.click(screen.getByRole("button", { name: "Pedal" }))
+    const offStatus = screen.getByRole("note", { name: "Pedal status: off" })
+    expect(offStatus.textContent).toBe("Pedal off")
+    expect(offStatus.getAttribute("data-pedal-active")).toBe("false")
+    expect(offStatus.getAttribute("data-pedal-source")).toBe("none")
+    expect(
+      screen
+        .getByRole("menuitemcheckbox", { name: /Sustain lock/ })
+        .querySelector('[data-slot="kbd"]')?.textContent,
+    ).toBe("Space")
     await act(async () => {
       fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /Sustain lock/ }))
       await Promise.resolve()
@@ -303,6 +404,18 @@ describe("PianoInstrument", () => {
     const pedal = screen.getByRole("button", { name: "Pedal" })
     expect(pedal.dataset.sustainLocked).toBe("true")
     expect(screen.getByRole("status", { name: "Sustain locked" })).toBeTruthy()
+
+    await act(async () => {
+      fireEvent.click(pedal)
+      await Promise.resolve()
+    })
+    const lockStatus = screen.getByRole("note", { name: "Pedal status: on from Sustain Lock" })
+    expect(lockStatus.textContent).toBe("Pedal on · Lock")
+    expect(lockStatus.getAttribute("data-pedal-source")).toBe("lock")
+    await act(async () => {
+      fireEvent.keyDown(document, { key: "Escape" })
+      await Promise.resolve()
+    })
 
     fireEvent.keyDown(window, { code: "Space", repeat: false })
     expect(pedal.dataset.sustainLocked).toBe("false")

@@ -16,7 +16,9 @@ import {
 } from "@/components/piano-keyboard-view"
 import { PwaInstallDrawer } from "@/components/pwa-install-drawer"
 import { SiteFooter } from "@/components/site-footer"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Kbd, KbdGroup } from "@/components/ui/kbd"
 import { Separator } from "@/components/ui/separator"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -31,6 +33,7 @@ import {
   createPianoLayout,
   createStandardPianoLayout,
   formatPianoRange,
+  formatTranspositionKey,
   getPianoKeyByCode,
 } from "@/lib/piano"
 import type { PianoKey, PianoZone } from "@/lib/piano"
@@ -42,6 +45,63 @@ const VELOCITY = 0.68
 
 type AudioStatus = "idle" | "on" | "unavailable"
 type InstrumentMode = "dual-range" | "standard"
+
+function TranspositionReadout({
+  instrumentMode,
+  lowerStartMidi,
+  standardStartMidi,
+  upperStartMidi,
+}: {
+  instrumentMode: InstrumentMode
+  lowerStartMidi: number
+  standardStartMidi: number
+  upperStartMidi: number
+}) {
+  const standardKey = formatTranspositionKey(standardStartMidi)
+  const lowerKey = formatTranspositionKey(lowerStartMidi)
+  const upperKey = formatTranspositionKey(upperStartMidi)
+  const label =
+    instrumentMode === "standard"
+      ? `Standard transposition key ${standardKey}`
+      : `Lower transposition key ${lowerKey}, Upper transposition key ${upperKey}`
+
+  return (
+    <Badge
+      aria-atomic="true"
+      aria-label={label}
+      aria-live="polite"
+      className="h-6 w-24"
+      data-transposition-readout=""
+      variant="outline"
+    >
+      {instrumentMode === "standard" ? `Key ${standardKey}` : `L ${lowerKey} · U ${upperKey}`}
+    </Badge>
+  )
+}
+
+function RangeMovementGuide({ instrumentMode }: { instrumentMode: InstrumentMode }) {
+  const dualRange = instrumentMode === "dual-range"
+  const description = dualRange
+    ? "Select a range, then use Left and Right Arrow keys for fine movement"
+    : "Use Left and Right Arrow keys to move the range"
+
+  return (
+    <div
+      id="range-movement-guide"
+      aria-label={description}
+      className="flex shrink-0 items-center gap-1.5 font-mono text-[0.625rem] tracking-[0.08em] text-muted-foreground uppercase"
+      data-range-movement-guide=""
+      role="note"
+    >
+      {dualRange ? <span>Select range ·</span> : null}
+      <KbdGroup aria-hidden="true">
+        <Kbd>←</Kbd>
+        <Kbd>→</Kbd>
+      </KbdGroup>
+      <span>{dualRange ? "Fine move" : "Move range"}</span>
+    </div>
+  )
+}
 
 function DualRangeIcon() {
   return (
@@ -124,14 +184,16 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
   const [instrumentMode, setInstrumentMode] = useState<InstrumentMode>("standard")
   const [lowerStartMidi, setLowerStartMidi] = useState(DEFAULT_LOWER_START_MIDI)
   const [muted, setMuted] = useState(false)
+  const [remotePedalDown, setRemotePedalDown] = useState(false)
   const [standardStartMidi, setStandardStartMidi] = useState(DEFAULT_LOWER_START_MIDI)
   const [sustain, setSustainState] = useState(false)
   const [sustainLocked, setSustainLocked] = useState(false)
   const [upperStartMidi, setUpperStartMidi] = useState(DEFAULT_UPPER_START_MIDI)
   const activationTimers = useRef(new Map<number, number>())
+  const buttonNote = useRef<number | undefined>(undefined)
   const engineStarted = useRef(false)
   const noteSources = useRef(new Map<number, Set<string>>())
-  const pressedCodes = useRef(new Set<string>())
+  const pressedCodeNotes = useRef(new Map<string, number>())
   const pointerNotes = useRef(new Map<number, number>())
   const sustainLockedRef = useRef(false)
   const sustainSources = useRef<SustainSources | null>(null)
@@ -217,24 +279,21 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
     sustainSources.current?.set(source, enabled)
   }, [])
 
-  const resetInstrument = useCallback((updateVisualState: boolean, preserveManualLock = false) => {
+  const resetInstrument = useCallback((updateVisualState: boolean) => {
     for (const timer of activationTimers.current.values()) {
       window.clearTimeout(timer)
     }
 
     activationTimers.current.clear()
+    buttonNote.current = undefined
     noteSources.current.clear()
     pointerNotes.current.clear()
-    pressedCodes.current.clear()
+    pressedCodeNotes.current.clear()
     if (updateVisualState) {
-      if (preserveManualLock) {
-        sustainSources.current?.clear("keyboard")
-        sustainSources.current?.clear("remote-pedal")
-      } else {
-        sustainSources.current?.clearAll()
-        sustainLockedRef.current = false
-        setSustainLocked(false)
-      }
+      sustainSources.current?.clearAll()
+      sustainLockedRef.current = false
+      setRemotePedalDown(false)
+      setSustainLocked(false)
     }
 
     if (engineStarted.current) {
@@ -284,7 +343,6 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
         )
 
         if (nextStartMidi !== standardStartMidiRef.current) {
-          resetInstrument(true, true)
           standardStartMidiRef.current = nextStartMidi
           setStandardStartMidi(nextStartMidi)
         }
@@ -293,12 +351,12 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
 
       const key = getPianoKeyByCode(event.code, activeLayoutRef.current)
 
-      if (!key || event.repeat || pressedCodes.current.has(event.code)) {
+      if (!key || event.repeat || pressedCodeNotes.current.has(event.code)) {
         return
       }
 
       event.preventDefault()
-      pressedCodes.current.add(event.code)
+      pressedCodeNotes.current.set(event.code, key.midi)
       pressNote(key.midi, `keyboard:${event.code}`)
     }
 
@@ -308,27 +366,50 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
         return
       }
 
-      const key = getPianoKeyByCode(event.code, activeLayoutRef.current)
+      if (event.code === "Enter" && buttonNote.current !== undefined) {
+        const midi = buttonNote.current
+        buttonNote.current = undefined
+        event.preventDefault()
+        releaseNote(midi, `button:${midi}`)
+        return
+      }
 
-      if (!key || !pressedCodes.current.delete(event.code)) {
+      const midi = pressedCodeNotes.current.get(event.code)
+
+      if (midi === undefined || !pressedCodeNotes.current.delete(event.code)) {
         return
       }
 
       event.preventDefault()
-      releaseNote(key.midi, `keyboard:${event.code}`)
+      releaseNote(midi, `keyboard:${event.code}`)
     }
 
     function handleBlur() {
       resetInstrument(true)
     }
 
+    function handlePointerEnd(event: PointerEvent) {
+      const midi = pointerNotes.current.get(event.pointerId)
+
+      if (midi === undefined) {
+        return
+      }
+
+      pointerNotes.current.delete(event.pointerId)
+      releaseNote(midi, `pointer:${event.pointerId}`)
+    }
+
     window.addEventListener("keydown", handleKeyDown)
     window.addEventListener("keyup", handleKeyUp)
+    window.addEventListener("pointercancel", handlePointerEnd)
+    window.addEventListener("pointerup", handlePointerEnd)
     window.addEventListener("blur", handleBlur)
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
       window.removeEventListener("keyup", handleKeyUp)
+      window.removeEventListener("pointercancel", handlePointerEnd)
+      window.removeEventListener("pointerup", handlePointerEnd)
       window.removeEventListener("blur", handleBlur)
       resetInstrument(false)
       getPianoAudioEngine().setMuted(false)
@@ -358,6 +439,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
     }
 
     event.preventDefault()
+    buttonNote.current = key.midi
     pressNote(key.midi, `button:${key.midi}`)
   }
 
@@ -367,6 +449,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
     }
 
     event.preventDefault()
+    buttonNote.current = undefined
     releaseNote(key.midi, `button:${key.midi}`)
   }
 
@@ -395,7 +478,6 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
   function handleModeChange(nextMode: InstrumentMode) {
     if (nextMode === instrumentMode) return
 
-    resetInstrument(true, true)
     instrumentModeRef.current = nextMode
     setInstrumentMode(nextMode)
   }
@@ -407,13 +489,11 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
   }
 
   function handleRangeChange(zone: PianoZone, startMidi: number) {
-    resetInstrument(true, true)
     if (zone === "lower") setLowerStartMidi(startMidi)
     else setUpperStartMidi(startMidi)
   }
 
   function handleStandardRangeChange(startMidi: number) {
-    resetInstrument(true, true)
     standardStartMidiRef.current = startMidi
     setStandardStartMidi(startMidi)
   }
@@ -450,9 +530,13 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
 
           <div className="flex flex-wrap items-center justify-end gap-2">
             <PedalMenu
+              remotePedalDown={remotePedalDown}
               sustainActive={sustain}
               sustainLocked={sustainLocked}
-              onPhonePedalChange={(down) => setSustain("remote-pedal", down)}
+              onPhonePedalChange={(down) => {
+                setRemotePedalDown(down)
+                setSustain("remote-pedal", down)
+              }}
               onSustainLockChange={(enabled) => {
                 setManualSustainLock(enabled)
               }}
@@ -490,13 +574,22 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
 
         <Separator />
 
-        <section className="flex min-h-0 flex-1 flex-col gap-3 px-3 py-3 sm:gap-5 sm:px-8 sm:py-7 lg:px-10 [@media(max-height:500px)]:gap-2 [@media(max-height:500px)]:px-3 [@media(max-height:500px)]:py-2">
-          <div className="flex flex-wrap items-end justify-between gap-4 [@media(max-height:500px)]:hidden">
-            <div className="flex flex-col gap-1">
-              <span className="font-mono text-[0.625rem] tracking-[0.16em] text-brass uppercase">
+        <section className="flex min-h-0 flex-1 flex-col gap-3 px-3 py-3 sm:gap-5 sm:px-8 sm:py-7 lg:px-10 [@media(max-height:500px)]:gap-1 [@media(max-height:500px)]:px-3 [@media(max-height:500px)]:py-0.5">
+          <div
+            className="flex min-h-6 items-center justify-between gap-3"
+            data-range-status-strip=""
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <TranspositionReadout
+                instrumentMode={instrumentMode}
+                lowerStartMidi={lowerStartMidi}
+                standardStartMidi={standardStartMidi}
+                upperStartMidi={upperStartMidi}
+              />
+              <span className="font-mono text-[0.625rem] tracking-[0.16em] text-brass uppercase [@media(max-height:500px)]:hidden">
                 {instrumentMode === "standard" ? (
                   <>
-                    <span className="inline-block w-14">
+                    <span aria-hidden="true" className="inline-block w-14">
                       {formatPianoRange(standardStartMidi, STANDARD_RANGE_NOTE_COUNT)}
                     </span>
                     {` · ${STANDARD_RANGE_NOTE_COUNT} notes · ${LOWER_RANGE_NOTE_COUNT + UPPER_RANGE_NOTE_COUNT} keys`}
@@ -505,12 +598,29 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
                   "A0 — C8 navigator · 2 active ranges"
                 )}
               </span>
-              <p className="max-w-2xl text-sm text-muted-foreground">
-                Play this free online piano with your computer keyboard or touch. No download or
-                sign-up.
-              </p>
+              {instrumentMode === "standard" ? (
+                <output className="sr-only" aria-label="Standard range">
+                  {formatPianoRange(standardStartMidi, STANDARD_RANGE_NOTE_COUNT)}
+                </output>
+              ) : (
+                <>
+                  <output className="sr-only" aria-label="Lower range">
+                    {formatPianoRange(lowerStartMidi, LOWER_RANGE_NOTE_COUNT)}
+                  </output>
+                  <output className="sr-only" aria-label="Upper range">
+                    {formatPianoRange(upperStartMidi, UPPER_RANGE_NOTE_COUNT)}
+                  </output>
+                </>
+              )}
             </div>
+            <RangeMovementGuide instrumentMode={instrumentMode} />
+          </div>
 
+          <div className="flex flex-wrap items-end justify-between gap-4 [@media(max-height:500px)]:hidden">
+            <p className="max-w-2xl text-sm text-muted-foreground">
+              Play this free online piano with your computer keyboard or touch. No download or
+              sign-up.
+            </p>
             <div className="flex flex-wrap gap-x-5 gap-y-1 font-mono text-[0.625rem] tracking-[0.1em] text-muted-foreground uppercase">
               <span>Z–/ · lower reach</span>
               <span>Q–] · upper reach</span>

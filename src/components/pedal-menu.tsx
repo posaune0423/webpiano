@@ -4,6 +4,7 @@ import { Smartphone } from "lucide-react"
 import { useRef, useState } from "react"
 
 import { PedalConnectDialog } from "@/components/pedal-connect-dialog"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -15,13 +16,62 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Kbd } from "@/components/ui/kbd"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface PedalMenuProps {
   onPhonePedalChange: (down: boolean) => void
   onSustainLockChange: (enabled: boolean) => void
+  remotePedalDown: boolean
   sustainActive: boolean
   sustainLocked: boolean
+}
+
+function PedalStatusBadge({
+  remotePedalDown,
+  sustainActive,
+  sustainLocked,
+}: Pick<PedalMenuProps, "remotePedalDown" | "sustainActive" | "sustainLocked">) {
+  const source =
+    remotePedalDown && sustainLocked
+      ? "phone-lock"
+      : remotePedalDown
+        ? "phone"
+        : sustainLocked
+          ? "lock"
+          : "none"
+  const statusText = !sustainActive
+    ? "Pedal off"
+    : source === "phone-lock"
+      ? "Pedal on · Phone + Lock"
+      : source === "phone"
+        ? "Pedal on · Phone"
+        : source === "lock"
+          ? "Pedal on · Lock"
+          : "Pedal on"
+  const accessibleLabel = !sustainActive
+    ? "Pedal status: off"
+    : source === "phone-lock"
+      ? "Pedal status: on from phone pedal and Sustain Lock"
+      : source === "phone"
+        ? "Pedal status: on from phone pedal"
+        : source === "lock"
+          ? "Pedal status: on from Sustain Lock"
+          : "Pedal status: on"
+
+  return (
+    <Badge
+      aria-label={accessibleLabel}
+      className="h-5 w-40"
+      data-pedal-active={sustainActive}
+      data-pedal-source={source}
+      data-pedal-status=""
+      role="note"
+      variant={sustainActive ? "secondary" : "outline"}
+    >
+      <span className="font-mono text-[0.625rem] tracking-[0.08em] uppercase">{statusText}</span>
+    </Badge>
+  )
 }
 
 function PedalIcon({ active = false, locked = false }: { active?: boolean; locked?: boolean }) {
@@ -68,6 +118,7 @@ function PedalIcon({ active = false, locked = false }: { active?: boolean; locke
 export function PedalMenu({
   onPhonePedalChange,
   onSustainLockChange,
+  remotePedalDown,
   sustainActive,
   sustainLocked,
 }: PedalMenuProps) {
@@ -103,13 +154,25 @@ export function PedalMenu({
             <PedalIcon active={sustainActive} locked={sustainLocked} />
           </TooltipTrigger>
           <TooltipContent>
-            Pedal · {sustainLocked ? "Sustain locked" : `Sustain ${sustainActive ? "on" : "off"}`}
+            Pedal ·{" "}
+            {remotePedalDown && sustainLocked
+              ? "Phone pedal down + Sustain locked"
+              : remotePedalDown
+                ? "Phone pedal down"
+                : sustainLocked
+                  ? "Sustain locked"
+                  : `Sustain ${sustainActive ? "on" : "off"}`}
           </TooltipContent>
         </Tooltip>
         <DropdownMenuContent align="end" className="w-72">
           <DropdownMenuGroup>
-            <DropdownMenuLabel className="font-mono tracking-[0.14em] uppercase">
-              Pedal
+            <DropdownMenuLabel className="flex items-center justify-between gap-2 font-mono tracking-[0.14em] uppercase">
+              <span>Pedal</span>
+              <PedalStatusBadge
+                remotePedalDown={remotePedalDown}
+                sustainActive={sustainActive}
+                sustainLocked={sustainLocked}
+              />
             </DropdownMenuLabel>
             <DropdownMenuCheckboxItem
               checked={sustainLocked}
@@ -121,7 +184,10 @@ export function PedalMenu({
             >
               <PedalIcon active={sustainLocked} locked={sustainLocked} />
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span>Sustain lock</span>
+                <span className="flex items-center justify-between gap-2">
+                  <span>Sustain lock</span>
+                  <Kbd>Space</Kbd>
+                </span>
                 <span className="text-[0.625rem] text-muted-foreground">
                   Keep sustain on until switched off
                 </span>

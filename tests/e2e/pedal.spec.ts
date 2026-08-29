@@ -30,6 +30,14 @@ test("pairs a phone pedal and applies sustain over WebRTC", async ({ browser, pa
     await phone.mouse.down()
 
     await expect(page.getByRole("status", { name: "Sustain on" })).toBeVisible()
+    await page.getByRole("button", { name: "Pedal" }).click()
+    const phonePedalStatus = page.getByRole("menu").getByRole("note", {
+      name: "Pedal status: on from phone pedal",
+    })
+    await expect(phonePedalStatus).toHaveText("Pedal on · Phone")
+    await expect(phonePedalStatus).toHaveAttribute("data-pedal-active", "true")
+    await expect(phonePedalStatus).toHaveAttribute("data-pedal-source", "phone")
+    await page.keyboard.press("Escape")
 
     const c3 = page.getByRole("button", { name: "Play C3 with Z" })
     await page.keyboard.down("z")
@@ -38,10 +46,61 @@ test("pairs a phone pedal and applies sustain over WebRTC", async ({ browser, pa
     await expect(c3).toHaveAttribute("aria-pressed", "false")
     await expect(page.getByRole("status", { name: "Sustain on" })).toBeVisible()
 
+    await page.keyboard.press("Space")
+    await page.getByRole("button", { name: "Pedal" }).click()
+    const phoneAndLockPedalStatus = page.getByRole("menu").getByRole("note", {
+      name: "Pedal status: on from phone pedal and Sustain Lock",
+    })
+    await expect(phoneAndLockPedalStatus).toHaveText("Pedal on · Phone + Lock")
+    await expect(phoneAndLockPedalStatus).toHaveAttribute("data-pedal-source", "phone-lock")
+    await page.keyboard.press("Escape")
+
     await phone.mouse.up()
+    await page.getByRole("button", { name: "Pedal" }).click()
+    await expect(
+      page.getByRole("menu").getByRole("note", {
+        name: "Pedal status: on from Sustain Lock",
+      }),
+    ).toHaveText("Pedal on · Lock")
+    await page.keyboard.press("Escape")
+    await page.keyboard.press("Space")
     await expect(
       page.getByRole("status", { name: "Sustain off — press Space or use phone pedal" }),
     ).toBeVisible()
+
+    await phone.mouse.down()
+    await expect(page.getByRole("status", { name: "Sustain on" })).toBeVisible()
+    await page.evaluate(() => window.dispatchEvent(new Event("blur")))
+    await page.getByRole("button", { name: "Pedal" }).click()
+    await expect(
+      page.getByRole("menu").getByRole("note", { name: "Pedal status: off" }),
+    ).toHaveText("Pedal off")
+    await page.keyboard.press("Escape")
+
+    await page.keyboard.press("Space")
+    await page.getByRole("button", { name: "Pedal" }).click()
+    const lockedPedalStatus = page.getByRole("menu").getByRole("note", {
+      name: "Pedal status: on from Sustain Lock",
+    })
+    await expect(lockedPedalStatus).toHaveText("Pedal on · Lock")
+    await page.keyboard.press("Escape")
+
+    await phone.mouse.up()
+    await page.getByRole("button", { name: "Pedal" }).click()
+    await expect(
+      page.getByRole("menu").getByRole("note", {
+        name: "Pedal status: on from Sustain Lock",
+      }),
+    ).toHaveText("Pedal on · Lock")
+    await page.keyboard.press("Escape")
+    await page.keyboard.press("Space")
+    await expect(
+      page.getByRole("status", { name: "Sustain off — press Space or use phone pedal" }),
+    ).toBeVisible()
+    await page.getByRole("button", { name: "Pedal" }).click()
+    await expect(
+      page.getByRole("menu").getByRole("note", { name: "Pedal status: off" }),
+    ).toHaveText("Pedal off")
   } finally {
     await phoneContext.close()
   }

@@ -88,6 +88,17 @@ test("opens directly into the responsive playable piano without page overflow", 
   await expect(main.getByRole("button", { name: "Pedal" })).toBeVisible()
   await expect(main.getByRole("button", { name: "Install webpiano" })).toBeVisible()
   await expect(main.getByRole("status", { name: "Standard range" })).toHaveText("C3–G5")
+  const transpositionReadout = main.getByLabel("Standard transposition key C")
+  await expect(transpositionReadout).toHaveText("Key C")
+  await expect(main.locator("header").getByLabel(/transposition key/)).toHaveCount(0)
+  await expect(main.locator("section").getByLabel("Standard transposition key C")).toHaveCount(1)
+  const movementGuide = main.getByRole("note", {
+    name: "Use Left and Right Arrow keys to move the range",
+  })
+  await expect(movementGuide).toContainText("Move range")
+  await expect(movementGuide.locator('[data-slot="kbd"]')).toHaveCount(2)
+  await expect(main.locator("[data-pedal-status]")).toHaveCount(0)
+  await expect(main.getByRole("button", { name: /semitone (down|up)/ })).toHaveCount(0)
   await expect(main.getByRole("status", { name: /Sustain (on|off)/ })).toBeAttached()
   await expect(main.getByRole("status", { name: "Play a note to start audio" })).toBeAttached()
   await expect(main.getByRole("group", { name: "Keyboard mode" })).toBeVisible()
@@ -149,17 +160,14 @@ test("opens directly into the responsive playable piano without page overflow", 
   const naturalNotesLeft =
     testInfo.project.name === "desktop-chromium" ? await notesLeft() : undefined
 
-  await main.getByRole("button", { name: "Standard semitone down" }).click()
+  await page.keyboard.press("ArrowLeft")
   await expect(main.getByRole("status", { name: "Standard range" })).toHaveText("B2–F♯5")
+  await expect(main.getByLabel("Standard transposition key B")).toHaveText("Key B")
   if (naturalNotesLeft !== undefined) {
     await expect.poll(notesLeft).toBeCloseTo(naturalNotesLeft, 0)
   }
-  await main.getByRole("button", { name: "Standard semitone up" }).click()
-
-  await page.keyboard.press("ArrowLeft")
-  await expect(main.getByRole("status", { name: "Standard range" })).toHaveText("B2–F♯5")
   await page.keyboard.press("ArrowRight")
-  await expect(main.getByRole("status", { name: "Standard range" })).toHaveText("C3–G5")
+  await expect(main.getByLabel("Standard transposition key C")).toHaveText("Key C")
 
   const c3 = main.getByRole("button", { name: "Play C3 with Z" })
   const cSharp3 = main.getByRole("button", { name: "Play C♯3 with S" })
@@ -229,6 +237,17 @@ test("shares one 88-key navigator between Standard and Dual Range", async ({ pag
   await expect(lowerPiano).toBeVisible()
   await expect(upperPiano).toBeVisible()
   await expect(main.getByRole("button", { name: /Play / })).toHaveCount(37)
+  await expect(main.getByLabel("Lower transposition key C, Upper transposition key C")).toHaveText(
+    "L C · U C",
+  )
+  await expect(main.locator("header").getByLabel(/transposition key/)).toHaveCount(0)
+  await expect(main.locator("section").getByLabel(/Lower transposition key/)).toHaveCount(1)
+  await expect(
+    main.getByRole("note", {
+      name: "Select a range, then use Left and Right Arrow keys for fine movement",
+    }),
+  ).toContainText("Fine move")
+  await expect(main.getByRole("button", { name: /semitone (down|up)/ })).toHaveCount(0)
 
   const minimumZoneHeight = testInfo.project.name === "desktop-chromium" ? 300 : 120
   await expect
@@ -243,8 +262,16 @@ test("shares one 88-key navigator between Standard and Dual Range", async ({ pag
   expect((navigatorBox?.width ?? 0) / (navigatorBox?.height ?? 1)).toBeGreaterThan(7.8)
   expect((navigatorBox?.width ?? 0) / (navigatorBox?.height ?? 1)).toBeLessThan(8.6)
 
-  await main.getByRole("button", { name: "Lower semitone down" }).click()
+  const lowerRange = main.getByRole("slider", { name: "Move Lower range" })
+  await expect(lowerRange).toHaveAttribute("aria-describedby", "range-movement-guide")
+  await lowerRange.click()
+  await expect(lowerRange).toBeFocused()
+  await page.keyboard.press("ArrowLeft")
+  await lowerRange.blur()
   await expect(main.getByRole("status", { name: "Lower range" })).toHaveText("B2–D♯4")
+  await expect(main.getByLabel("Lower transposition key B, Upper transposition key C")).toHaveText(
+    "L B · U C",
+  )
 
   const lowerC = main.getByRole("button", { name: "Play B2 with Z" })
   await page.keyboard.down("z")
@@ -252,7 +279,6 @@ test("shares one 88-key navigator between Standard and Dual Range", async ({ pag
   await expect(navigator.locator('[data-midi="47"]')).toHaveAttribute("data-active", "true")
   await page.keyboard.up("z")
 
-  const lowerRange = main.getByRole("slider", { name: "Move Lower range" })
   const lowerRangeBox = await lowerRange.boundingBox()
   const navigatorBoxForDrag = await navigator.boundingBox()
   expect(lowerRangeBox).not.toBeNull()
@@ -333,6 +359,10 @@ test("opens the pedal menu without shifting the instrument and locks sustain", a
 
   const sustainLock = page.getByRole("menuitemcheckbox", { name: /Sustain lock/ })
   await expect(sustainLock).toBeVisible()
+  const pedalStatus = page.getByRole("menu").getByRole("note", { name: "Pedal status: off" })
+  await expect(pedalStatus).toHaveText("Pedal off")
+  await expect(pedalStatus).toHaveAttribute("data-pedal-source", "none")
+  await expect(sustainLock.locator('[data-slot="kbd"]')).toHaveText("Space")
   await expect(page.getByRole("menuitem", { name: /Use phone as pedal/ })).toBeVisible()
   const after = await main.boundingBox()
   expect(after).toEqual(before)
