@@ -88,7 +88,10 @@ test("opens directly into the responsive playable piano without page overflow", 
   await expect(main.getByRole("button", { name: "Pedal" })).toBeVisible()
   await expect(main.getByRole("button", { name: "Install webpiano" })).toBeVisible()
   await expect(main.getByRole("status", { name: "Standard range" })).toHaveText("C3–G5")
-  await expect(main.getByLabel("Standard transposition key C")).toHaveText("Key C")
+  const transpositionReadout = main.getByLabel("Standard transposition key C")
+  await expect(transpositionReadout).toHaveText("Key C")
+  await expect(main.locator("header").getByLabel("Standard transposition key C")).toHaveCount(1)
+  await expect(main.locator("section").getByLabel(/transposition key/)).toHaveCount(0)
   await expect(main.getByRole("status", { name: /Sustain (on|off)/ })).toBeAttached()
   await expect(main.getByRole("status", { name: "Play a note to start audio" })).toBeAttached()
   await expect(main.getByRole("group", { name: "Keyboard mode" })).toBeVisible()
@@ -232,8 +235,11 @@ test("shares one 88-key navigator between Standard and Dual Range", async ({ pag
   await expect(lowerPiano).toBeVisible()
   await expect(upperPiano).toBeVisible()
   await expect(main.getByRole("button", { name: /Play / })).toHaveCount(37)
-  await expect(main.getByLabel("Lower transposition key C")).toHaveText("Key C")
-  await expect(main.getByLabel("Upper transposition key C")).toHaveText("Key C")
+  await expect(main.getByLabel("Lower transposition key C, Upper transposition key C")).toHaveText(
+    "L C · U C",
+  )
+  await expect(main.locator("header").getByLabel(/Lower transposition key/)).toHaveCount(1)
+  await expect(main.locator("section").getByLabel(/transposition key/)).toHaveCount(0)
 
   const minimumZoneHeight = testInfo.project.name === "desktop-chromium" ? 300 : 120
   await expect
@@ -250,7 +256,9 @@ test("shares one 88-key navigator between Standard and Dual Range", async ({ pag
 
   await main.getByRole("button", { name: "Lower semitone down" }).click()
   await expect(main.getByRole("status", { name: "Lower range" })).toHaveText("B2–D♯4")
-  await expect(main.getByLabel("Lower transposition key B")).toHaveText("Key B")
+  await expect(main.getByLabel("Lower transposition key B, Upper transposition key C")).toHaveText(
+    "L B · U C",
+  )
 
   const lowerC = main.getByRole("button", { name: "Play B2 with Z" })
   await page.keyboard.down("z")

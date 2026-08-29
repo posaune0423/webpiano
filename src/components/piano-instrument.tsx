@@ -16,6 +16,7 @@ import {
 } from "@/components/piano-keyboard-view"
 import { PwaInstallDrawer } from "@/components/pwa-install-drawer"
 import { SiteFooter } from "@/components/site-footer"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
@@ -31,6 +32,7 @@ import {
   createPianoLayout,
   createStandardPianoLayout,
   formatPianoRange,
+  formatTranspositionKey,
   getPianoKeyByCode,
 } from "@/lib/piano"
 import type { PianoKey, PianoZone } from "@/lib/piano"
@@ -42,6 +44,39 @@ const VELOCITY = 0.68
 
 type AudioStatus = "idle" | "on" | "unavailable"
 type InstrumentMode = "dual-range" | "standard"
+
+function TranspositionReadout({
+  instrumentMode,
+  lowerStartMidi,
+  standardStartMidi,
+  upperStartMidi,
+}: {
+  instrumentMode: InstrumentMode
+  lowerStartMidi: number
+  standardStartMidi: number
+  upperStartMidi: number
+}) {
+  const standardKey = formatTranspositionKey(standardStartMidi)
+  const lowerKey = formatTranspositionKey(lowerStartMidi)
+  const upperKey = formatTranspositionKey(upperStartMidi)
+  const label =
+    instrumentMode === "standard"
+      ? `Standard transposition key ${standardKey}`
+      : `Lower transposition key ${lowerKey}, Upper transposition key ${upperKey}`
+
+  return (
+    <Badge
+      aria-atomic="true"
+      aria-label={label}
+      aria-live="polite"
+      className="h-6 w-24"
+      data-transposition-readout=""
+      variant="outline"
+    >
+      {instrumentMode === "standard" ? `Key ${standardKey}` : `L ${lowerKey} · U ${upperKey}`}
+    </Badge>
+  )
+}
 
 function DualRangeIcon() {
   return (
@@ -499,6 +534,12 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
                 <span className="font-mono text-[0.5625rem] tracking-[0.1em] uppercase">Dual</span>
               </ToggleGroupItem>
             </ToggleGroup>
+            <TranspositionReadout
+              instrumentMode={instrumentMode}
+              lowerStartMidi={lowerStartMidi}
+              standardStartMidi={standardStartMidi}
+              upperStartMidi={upperStartMidi}
+            />
             <PwaInstallDrawer />
             <output className="sr-only" aria-label={sustainLabel} aria-live="polite" />
             <output className="sr-only" aria-label={audioLabel} aria-live="polite" />
