@@ -140,7 +140,7 @@ describe("PianoInstrument", () => {
     fireEvent.pointerUp(standardRange, { clientX: 250, pointerId: 12 })
 
     expect(screen.getByRole("status", { name: "Standard range" }).textContent).toBe("F♯2–C♯5")
-    expect(allNotesOff).toHaveBeenCalledTimes(1)
+    expect(allNotesOff).not.toHaveBeenCalled()
   })
 
   test("bounds both ranges inside the full 88-key piano", () => {
@@ -190,29 +190,77 @@ describe("PianoInstrument", () => {
     expect(screen.getByRole("status", { name: "Upper range" }).textContent).toBe("C4–G5")
   })
 
-  test("clears sounding notes and reapplies an intentional Sustain Lock across layouts", () => {
+  test("keeps sounding notes and Sustain Lock independent across layouts", () => {
     renderInstrument()
     fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
     fireEvent.keyDown(window, { code: "Space", repeat: false })
 
     fireEvent.click(screen.getByRole("button", { name: "Dual keyboard" }))
 
-    expect(allNotesOff).toHaveBeenCalledTimes(1)
+    expect(allNotesOff).not.toHaveBeenCalled()
     expect(setSustain).toHaveBeenNthCalledWith(1, true)
-    expect(setSustain).toHaveBeenNthCalledWith(2, true)
+    expect(setSustain).toHaveBeenCalledTimes(1)
+    expect(
+      screen.getByRole("button", { name: "Play C3 with Z" }).getAttribute("aria-pressed"),
+    ).toBe("true")
     expect(screen.getByRole("status", { name: "Sustain locked" })).toBeTruthy()
   })
 
-  test("reapplies Sustain Lock after moving the playable range", () => {
+  test("keeps Sustain Lock and sustained audio while moving the playable range", () => {
     renderInstrument()
     fireEvent.keyDown(window, { code: "Space", repeat: false })
+    fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
+    fireEvent.keyUp(window, { code: "KeyZ" })
 
     fireEvent.click(screen.getByRole("button", { name: "Standard semitone down" }))
 
     expect(screen.getByRole("status", { name: "Standard range" }).textContent).toBe("B2–F♯5")
-    expect(allNotesOff).toHaveBeenCalledTimes(1)
-    expect(setSustain.mock.calls).toEqual([[true], [true]])
+    expect(allNotesOff).not.toHaveBeenCalled()
+    expect(setSustain.mock.calls).toEqual([[true]])
+    expect(noteOn).toHaveBeenCalledWith(48, 0.68)
+    expect(noteOff).toHaveBeenCalledWith(48)
     expect(screen.getByRole("status", { name: "Sustain locked" })).toBeTruthy()
+  })
+
+  test("releases the original note when a held key crosses a range change", () => {
+    renderInstrument()
+
+    fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
+    fireEvent.click(screen.getByRole("button", { name: "Standard semitone down" }))
+    fireEvent.keyUp(window, { code: "KeyZ" })
+
+    expect(allNotesOff).not.toHaveBeenCalled()
+    expect(noteOn).toHaveBeenNthCalledWith(1, 48, 0.68)
+    expect(noteOff).toHaveBeenNthCalledWith(1, 48)
+
+    fireEvent.keyDown(window, { code: "KeyZ", repeat: false })
+    expect(noteOn).toHaveBeenNthCalledWith(2, 47, 0.68)
+  })
+
+  test("releases pointer-owned audio after its key leaves the moved range", () => {
+    renderInstrument()
+    const c3 = screen.getByRole("button", { name: "Play C3 with Z" })
+
+    fireEvent.pointerDown(c3, { pointerId: 17 })
+    fireEvent.click(screen.getByRole("button", { name: "Standard semitone up" }))
+    fireEvent.pointerUp(window, { pointerId: 17 })
+
+    expect(allNotesOff).not.toHaveBeenCalled()
+    expect(noteOn).toHaveBeenCalledWith(48, 0.68)
+    expect(noteOff).toHaveBeenCalledWith(48)
+  })
+
+  test("releases Enter-owned audio after its key leaves the moved range", () => {
+    renderInstrument()
+    const c3 = screen.getByRole("button", { name: "Play C3 with Z" })
+
+    fireEvent.keyDown(c3, { code: "Enter", key: "Enter", repeat: false })
+    fireEvent.click(screen.getByRole("button", { name: "Standard semitone up" }))
+    fireEvent.keyUp(window, { code: "Enter", key: "Enter" })
+
+    expect(allNotesOff).not.toHaveBeenCalled()
+    expect(noteOn).toHaveBeenCalledWith(48, 0.68)
+    expect(noteOff).toHaveBeenCalledWith(48)
   })
 
   test("reflects sounding notes on the decorative full-piano navigator", () => {
@@ -246,7 +294,7 @@ describe("PianoInstrument", () => {
     fireEvent.pointerUp(lowerRange, { clientX: 250, pointerId: 11 })
 
     expect(screen.getByRole("status", { name: "Lower range" }).textContent).toBe("F♯2–A♯3")
-    expect(allNotesOff).toHaveBeenCalledTimes(1)
+    expect(allNotesOff).not.toHaveBeenCalled()
   })
 
   test("plays and releases mapped PC keys without repeating held notes", () => {

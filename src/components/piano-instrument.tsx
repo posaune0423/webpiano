@@ -129,9 +129,10 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
   const [sustainLocked, setSustainLocked] = useState(false)
   const [upperStartMidi, setUpperStartMidi] = useState(DEFAULT_UPPER_START_MIDI)
   const activationTimers = useRef(new Map<number, number>())
+  const buttonNote = useRef<number | undefined>(undefined)
   const engineStarted = useRef(false)
   const noteSources = useRef(new Map<number, Set<string>>())
-  const pressedCodes = useRef(new Set<string>())
+  const pressedCodeNotes = useRef(new Map<string, number>())
   const pointerNotes = useRef(new Map<number, number>())
   const sustainLockedRef = useRef(false)
   const sustainSources = useRef<SustainSources | null>(null)
@@ -217,27 +218,24 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
     sustainSources.current?.set(source, enabled)
   }, [])
 
-  const resetInstrument = useCallback((updateVisualState: boolean, preserveSustain = false) => {
+  const resetInstrument = useCallback((updateVisualState: boolean) => {
     for (const timer of activationTimers.current.values()) {
       window.clearTimeout(timer)
     }
 
     activationTimers.current.clear()
+    buttonNote.current = undefined
     noteSources.current.clear()
     pointerNotes.current.clear()
-    pressedCodes.current.clear()
-    if (updateVisualState && !preserveSustain) {
+    pressedCodeNotes.current.clear()
+    if (updateVisualState) {
       sustainSources.current?.clearAll()
       sustainLockedRef.current = false
       setSustainLocked(false)
     }
 
     if (engineStarted.current) {
-      const engine = getPianoAudioEngine()
-      engine.allNotesOff()
-      if (preserveSustain && sustainSources.current?.active) {
-        engine.setSustain(true)
-      }
+      getPianoAudioEngine().allNotesOff()
     }
 
     if (updateVisualState) {
@@ -283,7 +281,6 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
         )
 
         if (nextStartMidi !== standardStartMidiRef.current) {
-          resetInstrument(true, true)
           standardStartMidiRef.current = nextStartMidi
           setStandardStartMidi(nextStartMidi)
         }
@@ -292,12 +289,12 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
 
       const key = getPianoKeyByCode(event.code, activeLayoutRef.current)
 
-      if (!key || event.repeat || pressedCodes.current.has(event.code)) {
+      if (!key || event.repeat || pressedCodeNotes.current.has(event.code)) {
         return
       }
 
       event.preventDefault()
-      pressedCodes.current.add(event.code)
+      pressedCodeNotes.current.set(event.code, key.midi)
       pressNote(key.midi, `keyboard:${event.code}`)
     }
 
@@ -307,27 +304,50 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
         return
       }
 
-      const key = getPianoKeyByCode(event.code, activeLayoutRef.current)
+      if (event.code === "Enter" && buttonNote.current !== undefined) {
+        const midi = buttonNote.current
+        buttonNote.current = undefined
+        event.preventDefault()
+        releaseNote(midi, `button:${midi}`)
+        return
+      }
 
-      if (!key || !pressedCodes.current.delete(event.code)) {
+      const midi = pressedCodeNotes.current.get(event.code)
+
+      if (midi === undefined || !pressedCodeNotes.current.delete(event.code)) {
         return
       }
 
       event.preventDefault()
-      releaseNote(key.midi, `keyboard:${event.code}`)
+      releaseNote(midi, `keyboard:${event.code}`)
     }
 
     function handleBlur() {
       resetInstrument(true)
     }
 
+    function handlePointerEnd(event: PointerEvent) {
+      const midi = pointerNotes.current.get(event.pointerId)
+
+      if (midi === undefined) {
+        return
+      }
+
+      pointerNotes.current.delete(event.pointerId)
+      releaseNote(midi, `pointer:${event.pointerId}`)
+    }
+
     window.addEventListener("keydown", handleKeyDown)
     window.addEventListener("keyup", handleKeyUp)
+    window.addEventListener("pointercancel", handlePointerEnd)
+    window.addEventListener("pointerup", handlePointerEnd)
     window.addEventListener("blur", handleBlur)
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
       window.removeEventListener("keyup", handleKeyUp)
+      window.removeEventListener("pointercancel", handlePointerEnd)
+      window.removeEventListener("pointerup", handlePointerEnd)
       window.removeEventListener("blur", handleBlur)
       resetInstrument(false)
       getPianoAudioEngine().setMuted(false)
@@ -357,6 +377,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
     }
 
     event.preventDefault()
+    buttonNote.current = key.midi
     pressNote(key.midi, `button:${key.midi}`)
   }
 
@@ -366,6 +387,7 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
     }
 
     event.preventDefault()
+    buttonNote.current = undefined
     releaseNote(key.midi, `button:${key.midi}`)
   }
 
@@ -394,7 +416,6 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
   function handleModeChange(nextMode: InstrumentMode) {
     if (nextMode === instrumentMode) return
 
-    resetInstrument(true, true)
     instrumentModeRef.current = nextMode
     setInstrumentMode(nextMode)
   }
@@ -406,13 +427,11 @@ export function PianoInstrument({ structuredData }: { structuredData?: string })
   }
 
   function handleRangeChange(zone: PianoZone, startMidi: number) {
-    resetInstrument(true, true)
     if (zone === "lower") setLowerStartMidi(startMidi)
     else setUpperStartMidi(startMidi)
   }
 
   function handleStandardRangeChange(startMidi: number) {
-    resetInstrument(true, true)
     standardStartMidiRef.current = startMidi
     setStandardStartMidi(startMidi)
   }
